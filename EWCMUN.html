@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EWCMUN - Logging System</title>
+  <style>
+    :root{
+      --card-bg:#ffffff;
+      --muted:#666;
+      --accent:#018B85;
+      --bg-color:#f3f6fb;
+      --text-color:#111;
+      --header-bg:linear-gradient(90deg,#018B85,#0f172a);
+      --header-color:white;
+      --input-bg:#fff;
+      --input-border:#d1d5db;
+      --footer-color:#666;
+    }
+
+    [data-theme="dark"] {
+      --card-bg:#1e293b;
+      --muted:#94a3b8;
+      --accent:#0d9488;
+      --bg-color:#0f172a;
+      --text-color:#e2e8f0;
+      --header-bg:linear-gradient(90deg,#0f766e,#1e293b);
+      --header-color:#e2e8f0;
+      --input-bg:#334155;
+      --input-border:#475569;
+      --footer-color:#94a3b8;
+    }
+
+    body{
+      font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+      margin:0;
+      background:var(--bg-color);
+      color:var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    header{
+      background:var(--header-bg);
+      color:var(--header-color);
+      padding:12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .theme-toggle {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 13px;
+      width: auto;
+      transition: all 0.3s;
+    }
+    .theme-toggle:hover {
+      background: rgba(255,255,255,0.1);
+      transform: none;
+      box-shadow: none;
+    }
+    .container{
+      display:grid;
+      grid-template-columns:360px 1fr 320px;
+      gap:12px;
+      padding:14px;
+    }
+    .card{
+      background:var(--card-bg);
+      padding:12px;
+      border-radius:10px;
+      box-shadow:0 6px 18px rgba(16,24,40,0.06);
+      transition: background-color 0.3s;
+    }
+    h2{
+      margin:0 0 8px;
+      font-size:16px;
+      color:var(--accent);
+    }
+    label{
+      display:block;
+      font-size:13px;
+      color:var(--muted);
+    }
+    input,select,textarea,button{
+      width:100%;
+      padding:8px;
+      margin-top:6px;
+      margin-bottom:8px;
+      border-radius:6px;
+      border:1px solid var(--input-border);
+      font-family:inherit;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+      transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    }
+    button{
+      background:var(--accent);
+      color:#fff;
+      border:none;
+      cursor:pointer;
+      transition:all .25s ease;
+      box-shadow:0 4px 10px rgba(1,139,133,0.4); /* subtle glow */
+    }
+    button:hover{
+      background:#026c68;
+      box-shadow:0 0 15px rgba(1,139,133,0.7); /* brighter glow */
+      transform:translateY(-1px) scale(1.03);
+    }
+    .small{font-size:13px}
+    .list{max-height:300px;overflow:auto}
+    .speaker{display:flex;justify-content:space-between;padding:6px;border-bottom:1px dashed var(--muted)}
+    .actions{display:flex;gap:6px}
+    .timer-display{font-weight:700;font-size:28px;text-align:center;padding:8px;color:var(--accent)}
+    .motions{display:flex;flex-direction:column;gap:8px}
+    footer{
+      padding:12px;
+      text-align:center;
+      color:var(--footer-color);
+    }
+    
+    /* New styles for navigation */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .nav-tab {
+      padding: 8px 16px;
+      background: var(--card-bg);
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid var(--input-border);
+      transition: all 0.3s;
+    }
+    .nav-tab.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    
+    /* New styles for grading system */
+    .grade-display {
+      font-size: 14px;
+      margin-top: 4px;
+      color: var(--muted);
+    }
+    .grade-inputs {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .grade-inputs input {
+      flex: 1;
+    }
+    .grade-summary {
+      margin-top: 8px;
+      padding: 8px;
+      background: var(--input-bg);
+      border-radius: 6px;
+      border: 1px solid var(--input-border);
+    }
+    .grade-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px dashed var(--muted);
+    }
+    .grade-average {
+      font-weight: bold;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid var(--accent);
+    }
+    .grade-delegate-list {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+    
+    /* Page styles */
+    .page {
+      display: none;
+    }
+    .page.active {
+      display: block;
+    }
+    
+    /* NEW: Grading table styles */
+    .grading-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .grading-table th, .grading-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--input-border);
+      text-align: center;
+    }
+    .grading-table th {
+      background: var(--input-bg);
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .grading-table input[type="number"] {
+      width: 50px;
+      margin: 0;
+      padding: 4px;
+    }
+    .grading-table .delegate-name {
+      font-weight: 600;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .grading-table .total {
+      font-weight: bold;
+    }
+    .grading-table .award {
+      font-weight: 700;
+    }
+    .grading-controls {
+      margin: 10px 0 18px;
+      display: flex;
+      gap: 8px;
+    }
+    .grading-controls button {
+      width: auto;
+      padding: 8px 12px;
+    }
+    .weights-info {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    
+    @media (max-width:1000px){
+      .container{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <strong>EWCMUN — Logging System</strong>
+      <div style="font-size:13px;opacity:.9">Speaker list, roll call, timers, motions, grading</div>
+    </div>
+    <button class="theme-toggle" id="theme-toggle">🌙 Dark Mode</button>
+  </header>
+
+  <div style="padding: 14px 14px 0 14px;">
+    <div class="nav-tabs">
+      <div class="nav-tab active" data-page="main">Main Control</div>
+      <div class="nav-tab" data-page="grading">Delegate Grading</div>
+    </div>
+  </div>
+
+  <!-- Main Control Page -->
+  <div id="main-page" class="page active">
+    <div class="container">
+      <!-- Left column: Roll call + Speaker list -->
+      <div>
+        <div class="card">
+          <h2>Roll Call</h2>
+          <label>Country name</label>
+          <div style="display:flex;gap:8px">
+            <input id="rc-name" placeholder="e.g. France">
+            <button id="rc-add">Add</button>
+          </div>
+          <div class="list" id="rc-list" style="margin-top:8px"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="rc-mark-present">Mark Present</button>
+            <button id="rc-mark-pv">Present & Voting</button>
+            <button id="rc-clear">Clear</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h2>Speaker's List</h2>
+          <label>Delegate / Country</label>
+          <div style="display:flex;gap:8px">
+            <input id="sp-name" placeholder="Add to speaker list">
+            <button id="sp-add">Add</button>
+          </div>
+          <label>Default speaking time (sec)</label>
+          <input id="sp-default" type="number" value="60">
+          <div class="list" id="sp-list"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="sp-next">Next Speaker</button>
+            <button id="sp-remove">Remove Selected</button>
+            <button id="sp-clear">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Middle: Timer, motions -->
+      <div>
+        <div class="card">
+          <h2>Timer / Chair Controls</h2>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1">
+              <label>Current Timer</label>
+              <div class="timer-display" id="timer">00:00</div>
+              <div style="display:flex;gap:8px">
+                <input id="timer-mins" type="number" placeholder="mins" value="1">
+                <input id="timer-secs" type="number" placeholder="secs" value="0">
+                <button id="timer-start">Start</button>
+                <button id="timer-stop">Stop</button>
+                <button id="timer-reset">Reset</button>
+              </div>
+            </div>
+          </div>
+
+          <hr>
+
+          <h2>Motions</h2>
+          <div class="motions">
+            <select id="motion-type">
+              <option>Moderated Caucus</option>
+              <option>Unmoderated Caucus</option>
+              <option>Open/Close Speaker's List</option>
+              <option>Suspend Debate</option>
+              <option>Resume Debate</option>
+              <option>Extension of Caucus</option>
+              <option>Suspend Meeting</option>
+              <option>Adjourn Meeting</option>
+            </select>
+            <div style="display:flex;gap:8px">
+              <input id="motion-duration" placeholder="Duration (mins)" type="number">
+              <input id="motion-speak" placeholder="Speaking time (secs)" type="number">
+              <button id="motion-propose">Propose Motion</button>
+            </div>
+            <div id="motion-log" style="max-height:160px;overflow:auto;margin-top:8px;background:var(--input-bg);padding:8px;border-radius:6px;border:1px solid var(--input-border)"></div>
+          </div>
+
+          <hr>
+
+          <h2>Voting Bloc Simulator</h2>
+          <label>Begin Voting</label>
+          <div style="display:flex;gap:8px">
+            <button id="voting-start">Begin Voting</button>
+            <button id="voting-result">Show Result</button>
+          </div>
+          <div id="voting-log" style="margin-top:8px;padding:8px;background:var(--input-bg);border-radius:6px;border:1px solid var(--input-border)"></div>
+        </div>
+      </div>
+
+      <!-- Right column: Quick settings -->
+      <div>
+        <div class="card">
+          <h2>Quick Settings</h2>
+          <label>Chair name</label>
+          <input id="chair-name" placeholder="e.g. Maria">
+          <label>Conference</label>
+          <input id="conf-name" placeholder="Conference name">
+          <label>Auto-save</label>
+          <select id="autosave"><option value="1">On</option><option value="0">Off</option></select>
+          <button id="save-all">Save Now</button>
+          <button id="load-all">Load Saved</button>
+        </div>
+        
+        <div class="card" style="margin-top:12px">
+          <h2>Quick Grading</h2>
+          <p style="font-size:13px;color:var(--muted);margin:0 0 8px 0">
+            For detailed grading, go to the Grading page
+          </p>
+          <button id="go-to-grading">Go to Grading Page</button>
+          <button id="sync-delegates" style="margin-top:8px">Add Delegates</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grading Page -->
+  <div id="grading-page" class="page">
+    <div class="container" style="grid-template-columns: 1fr;">
+      <div>
+        <div class="card">
+          <h2>MUN Grading Sheet</h2>
+          <div class="weights-info">
+          </div>
+          
+          <div class="grading-controls">
+            <button id="addDelegates">Add Delegates</button>
+            <button id="clearAll">Clear All</button>
+            <button id="exportCsv">Export CSV</button>
+            <div style="margin-left:auto" class="small">Scores: 1 (None) — 5 (Excellent)</div>
+          </div>
+          
+          <table class="grading-table" id="sheet">
+            <thead>
+              <tr>
+                <th>Delegate</th>
+                <th>Research<br/>(20%)</th>
+                <th>Participation<br/>(25%)</th>
+                <th>Diplomacy<br/>(20%)</th>
+                <th>Speech<br/>(15%)</th>
+                <th>Writing<br/>(10%)</th>
+                <th>Leadership<br/>(10%)</th>
+                <th>Total %</th>
+                <th>Award</th>
+                <th>Remove</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- rows added here -->
+            </tbody>
+          </table>
+          
+          <div style="margin-top:12px;font-size:13px;color:var(--muted)">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>© EWCMUN2025</footer>
+
+  <script>
+    const state = {
+      rollcall: [],
+      speakers: [],
+      currentSpeaker: null,
+      timer: {remaining:0, interval:null},
+      motions: [],
+      voting: {active:false, votes:[]},
+      // NEW: Grading system state
+      grades: {} // Format: {delegateName: [{category, score, timestamp}]}
+    }
+
+    // Create audio element for timer sound
+    const timerSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
+    
+    // Function to play the timer sound
+    function playTimerSound() {
+      try {
+        timerSound.play();
+      } catch (e) {
+        // Fallback: Use browser's built-in beep
+        console.log("\u0007"); // This might not work in all browsers
+      }
+    }
+
+    function el(id){return document.getElementById(id)}
+    function renderRoll(){
+      const cont=el('rc-list'); cont.innerHTML='';
+      state.rollcall.forEach((r,i)=>{
+        const div=document.createElement('div'); 
+        div.style.display='flex'; div.style.justifyContent='space-between';
+        div.style.padding='6px'; div.style.borderBottom='1px solid var(--muted)';
+        div.innerHTML=`<div><strong>${r.name}</strong><div style="font-size:12px;color:var(--muted)">${r.status||'Not marked'}</div></div>`;
+        const btns=document.createElement('div'); btns.style.display='flex'; btns.style.gap='6px';
+        const sel=document.createElement('button'); sel.textContent='Select'; sel.onclick=()=>{state.rollcall[i].selected=!state.rollcall[i].selected; renderRoll();}
+        btns.appendChild(sel);
+        div.appendChild(btns);
+        if(r.selected) {
+          div.style.background='var(--accent)'; 
+          div.style.color='white';
+        }
+        cont.appendChild(div);
+      })
+    }
+
+    function renderSpeakers(){
+      const cont=el('sp-list'); cont.innerHTML='';
+      state.speakers.forEach((s,i)=>{
+        const div=document.createElement('div'); div.className='speaker';
+        div.innerHTML=`<div><strong>${s}</strong></div><div class="actions"><button onclick="removeSpeaker(${i})">Remove</button></div>`;
+        cont.appendChild(div);
+      })
+    }
+    window.removeSpeaker=(i)=>{state.speakers.splice(i,1);renderSpeakers();}
+
+    // Roll Call
+    el('rc-add').onclick=()=>{const name=el('rc-name').value.trim();if(!name)return;state.rollcall.push({name,status:'Not marked'});el('rc-name').value='';renderRoll();}
+    el('rc-mark-present').onclick=()=>{state.rollcall.forEach(r=>{if(r.selected)r.status='Present';r.selected=false});renderRoll();}
+    el('rc-mark-pv').onclick=()=>{state.rollcall.forEach(r=>{if(r.selected)r.status='Present & Voting';r.selected=false});renderRoll();}
+    el('rc-clear').onclick=()=>{if(confirm('Clear all roll call?')){state.rollcall=[];renderRoll();}}
+
+    // Speakers
+    el('sp-add').onclick=()=>{const v=el('sp-name').value.trim();if(!v)return;state.speakers.push(v);el('sp-name').value='';renderSpeakers();}
+    el('sp-clear').onclick=()=>{if(confirm('Clear speaker list?')){state.speakers=[];renderSpeakers();}}
+    el('sp-next').onclick=()=>{if(state.speakers.length===0){alert('No speakers');return;}const s=state.speakers.shift();renderSpeakers();startSpeakerTimer(s);}
+    function startSpeakerTimer(name){const secs=Number(el('sp-default').value)||60;startTimer(secs);state.currentSpeaker=name;alert(`Now speaking: ${name}`);}
+
+    // Timer
+    function formatTime(s){const m=Math.floor(s/60);const sec=s%60;return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`}
+    function renderTimer(){el('timer').textContent=formatTime(state.timer.remaining)}
+    function startTimer(seconds){stopTimer();state.timer.remaining=seconds;renderTimer();state.timer.interval=setInterval(()=>{state.timer.remaining--;renderTimer();if(state.timer.remaining<=0){stopTimer();playTimerSound();alert('Time is up!')}},1000);}
+    function stopTimer(){if(state.timer.interval)clearInterval(state.timer.interval);state.timer.interval=null;}
+    el('timer-start').onclick=()=>{const m=Number(el('timer-mins').value||0);const s=Number(el('timer-secs').value||0);startTimer(m*60+s);}
+    el('timer-stop').onclick=()=>{stopTimer();}
+    el('timer-reset').onclick=()=>{stopTimer();state.timer.remaining=0;renderTimer();}
+
+    // Motions
+    el('motion-propose').onclick=()=>{
+      const type=el('motion-type').value;
+      const dur=Number(el('motion-duration').value)||0;
+      const sp=Number(el('motion-speak').value)||30;
+      const motion={type,duration:dur,speaking:sp,time:new Date().toLocaleTimeString()};
+      state.motions.push(motion);renderMotions();
+      
+      // FIXED: Start timer for ANY motion with duration, using both minutes AND seconds
+      if (dur > 0 || sp > 0) {
+        // Convert minutes to seconds and add speaking time seconds
+        const totalSeconds = (dur * 60) + sp;
+        startTimer(totalSeconds);
+        alert(`Timer started for ${dur} minute${dur !== 1 ? 's' : ''} and ${sp} second${sp !== 1 ? 's' : ''} ${type}`);
+      }
+    }
+    function renderMotions(){
+      const node=el('motion-log');node.innerHTML='';
+      state.motions.slice().reverse().forEach(m=>{
+        const d=document.createElement('div');
+        d.style.borderBottom='1px solid var(--muted)';
+        d.style.padding='6px';
+        d.innerHTML=`<strong>${m.type}</strong> — ${m.duration||'-'} min — ${m.speaking}s — <span style="font-size:12px;color:var(--muted)">proposed ${m.time}</span>`;
+        node.appendChild(d);
+      })
+    }
+
+    // Voting
+    el('voting-start').onclick=()=>{
+      if(state.voting.active){alert('Voting already active');return}
+      state.voting.active=true;state.voting.votes=[];
+      el('voting-log').innerHTML='Voting started — click names to cast votes.';
+      const cont=document.createElement('div');
+      state.rollcall.forEach((r,idx)=>{
+        const b=document.createElement('button');b.textContent=r.name;b.style.margin='4px';b.onclick=(()=>{return function(){castVote(idx)}})();cont.appendChild(b);
+      });
+      el('voting-log').appendChild(cont);
+    }
+    function castVote(idx){
+      if(!state.voting.active)return;
+      const choice=prompt(`Vote for ${state.rollcall[idx].name} (Y/N/A for abstain)`);
+      if(!choice)return;
+      state.voting.votes.push({country:state.rollcall[idx].name,vote:choice.toUpperCase()});
+      el('voting-log').innerHTML=`Cast ${state.voting.votes.length} votes.`;
+    }
+    el('voting-result').onclick=()=>{
+      if(!state.voting.active)return alert('Start voting first');
+      state.voting.active=false;
+      const tally={Y:0,N:0,A:0};
+      state.voting.votes.forEach(v=>{tally[v.vote[0]]=(tally[v.vote[0]]||0)+1});
+      el('voting-log').innerHTML=`Results — For: ${tally.Y||0} Against: ${tally.N||0} Abstain: ${tally.A||0}`;
+    }
+
+    // NEW: Enhanced Grading System with Weighted Categories
+    const weights = { research:20, participation:25, diplomacy:20, speech:15, writing:10, leadership:10 };
+    const tbody = document.querySelector('#sheet tbody');
+    const addDelegatesBtn = document.getElementById('addDelegates');
+    const clearBtn = document.getElementById('clearAll');
+    const exportBtn = document.getElementById('exportCsv');
+    const syncDelegatesBtn = document.getElementById('sync-delegates');
+
+    // Function to check if delegate already exists in grading table
+    function delegateExists(name) {
+      const existingNames = Array.from(tbody.querySelectorAll('.delegate-name')).map(td => td.textContent.trim());
+      return existingNames.includes(name.trim());
+    }
+
+    function newRow(name=''){
+      // Don't add duplicate delegates
+      if (name && delegateExists(name)) {
+        return;
+      }
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="delegate-name">${name || 'New Delegate'}</td>
+        <td><input type="number" min="1" max="5" value="3" data-key="research" /></td>
+        <td><input type="number" min="1" max="5" value="3" data-key="participation" /></td>
+        <td><input type="number" min="1" max="5" value="3" data-key="diplomacy" /></td>
+        <td><input type="number" min="1" max="5" value="3" data-key="speech" /></td>
+        <td><input type="number" min="1" max="5" value="3" data-key="writing" /></td>
+        <td><input type="number" min="1" max="5" value="3" data-key="leadership" /></td>
+        <td class="total">0</td>
+        <td class="award">-</td>
+        <td><button class="remove">Remove</button></td>
+      `;
+
+      tbody.appendChild(tr);
+      attachListeners(tr);
+      calculateRow(tr);
+    }
+
+    function attachListeners(tr){
+      tr.querySelectorAll('input[type=number]').forEach(inp=>{
+        inp.addEventListener('input', ()=>calculateRow(tr));
+      });
+      tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); });
+    }
+
+    function calculateRow(tr){
+      const inputs = tr.querySelectorAll('input[type=number]');
+      let percent = 0;
+      inputs.forEach(i=>{
+        const key = i.dataset.key;
+        const score = Number(i.value) || 0; // 1-5
+        const w = weights[key] || 0;
+        percent += (score/5) * w;
+      });
+      const totalCell = tr.querySelector('.total');
+      totalCell.textContent = percent.toFixed(1) + '%';
+      const awardCell = tr.querySelector('.award');
+      awardCell.textContent = awardFromPercent(percent);
+    }
+
+    function awardFromPercent(p){
+      if(p>=90) return 'Best Delegate';
+      if(p>=80) return 'Outstanding Delegate';
+      if(p>=70) return 'Honourable Mention';
+      if(p>=60) return 'Verbal Commendation';
+      return 'Participant';
+    }
+
+    // Function to sync delegates from roll call to grading table
+    function syncRollCallToGrading() {
+      let addedCount = 0;
+      
+      state.rollcall.forEach(delegate => {
+        if (!delegateExists(delegate.name)) {
+          newRow(delegate.name);
+          addedCount++;
+        }
+      });
+      
+      if (addedCount > 0) {
+        alert(`Added ${addedCount} delegate${addedCount !== 1 ? 's' : ''} from roll call to grading sheet`);
+      } else {
+        alert('All roll call delegates are already in the grading sheet');
+      }
+    }
+
+    // Remove the individual add row functionality - only allow adding from roll call
+    addDelegatesBtn.addEventListener('click', syncRollCallToGrading);
+    clearBtn.addEventListener('click', ()=>{ 
+      if (confirm('Clear all grading data?')) {
+        tbody.innerHTML=''; 
+      }
+    });
+    
+    // Add event listeners for sync buttons
+    syncDelegatesBtn.addEventListener('click', syncRollCallToGrading);
+
+    exportBtn.addEventListener('click', ()=>{
+      const rows = [];
+      tbody.querySelectorAll('tr').forEach(r=>{
+        const name = r.querySelector('.delegate-name').textContent;
+        const data = { name };
+        r.querySelectorAll('input[type=number]').forEach(i=> data[i.dataset.key]=i.value);
+        data.total = r.querySelector('.total').textContent;
+        data.award = r.querySelector('.award').textContent;
+        rows.push(data);
+      });
+      const csv = toCsv(rows);
+      download('mun_grades.csv', csv);
+    });
+
+    function toCsv(rows){
+      if(rows.length===0) return '';
+      const keys = ['name','research','participation','diplomacy','speech','writing','leadership','total','award'];
+      const lines = [keys.join(',')];
+      rows.forEach(r=>{
+        const line = keys.map(k=>`"${(r[k]||'').toString().replace(/"/g,'""')}"`).join(',');
+        lines.push(line);
+      });
+      return lines.join('\n');
+    }
+
+    function download(filename, text){
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(text);
+      a.download = filename;
+      a.style.display='none';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    // Initialize with sample rows
+    document.addEventListener('DOMContentLoaded', () => {
+      // No longer adding sample rows automatically
+    });
+
+    // NEW: Navigation System
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const pageId = tab.getAttribute('data-page');
+        
+        // Update active tab
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Show active page
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+        document.getElementById(`${pageId}-page`).classList.add('active');
+      });
+    });
+    
+    // Go to grading page button
+    el('go-to-grading').onclick = () => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('.nav-tab[data-page="grading"]').classList.add('active');
+      
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.getElementById('grading-page').classList.add('active');
+    };
+
+    // Dark Mode Toggle
+    const themeToggle = el('theme-toggle');
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      if (currentTheme === 'dark') {
+        document.documentElement.removeAttribute('data-theme');
+        themeToggle.textContent = '🌙 Dark Mode';
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeToggle.textContent = '☀️ Light Mode';
+        localStorage.setItem('theme', 'dark');
+      }
+    });
+
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      themeToggle.textContent = '☀️ Light Mode';
+    }
+
+    // Save / Load
+    el('save-all').onclick=()=>{localStorage.setItem('wxmun_state',JSON.stringify(state));alert('Saved locally');}
+    el('load-all').onclick=()=>{const s=localStorage.getItem('wxmun_state');if(!s)return alert('No saved state');Object.assign(state,JSON.parse(s));renderAll();alert('Loaded');}
+    function renderAll(){
+      renderRoll();
+      renderSpeakers();
+      renderMotions();
+    }
+    setInterval(()=>{if(el('autosave').value==='1')localStorage.setItem('wxmun_state',JSON.stringify(state));},10000);
+
+    renderAll()
+  </script>
+</body>
+</html>
