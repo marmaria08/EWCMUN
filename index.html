@@ -239,6 +239,39 @@
       margin-bottom: 12px;
     }
     
+    /* NEW: Quick speaker selection styles */
+    .quick-speaker-controls {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+    }
+    .quick-speaker-controls button {
+      flex: 1;
+    }
+    .rollcall-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px;
+      border-bottom: 1px solid var(--muted);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .rollcall-item:hover {
+      background-color: var(--input-bg);
+    }
+    .rollcall-item.selected {
+      background-color: var(--accent);
+      color: white;
+    }
+    .rollcall-item .status {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .rollcall-item.selected .status {
+      color: rgba(255,255,255,0.8);
+    }
+    
     @media (max-width:1000px){
       .container{grid-template-columns:1fr;}
     }
@@ -278,6 +311,12 @@
             <button id="rc-mark-pv">Present & Voting</button>
             <button id="rc-clear">Clear</button>
           </div>
+          
+          <!-- NEW: Quick speaker selection controls -->
+          <div class="quick-speaker-controls">
+            <button id="rc-add-to-speakers">Add Selected to Speakers</button>
+            <button id="rc-clear-selection">Clear Selection</button>
+          </div>
         </div>
 
         <div class="card" style="margin-top:12px">
@@ -287,7 +326,7 @@
             <input id="sp-name" placeholder="Add to speaker list">
             <button id="sp-add">Add</button>
           </div>
-          <label>Default speaking time (sec)</label>
+          <label>Default Speaking Time (sec)</label>
           <input id="sp-default" type="number" value="60">
           <div class="list" id="sp-list"></div>
           <div style="display:flex;gap:8px;margin-top:8px">
@@ -447,23 +486,35 @@
     }
 
     function el(id){return document.getElementById(id)}
+    
+    // NEW: Enhanced roll call rendering with click-to-select functionality
     function renderRoll(){
       const cont=el('rc-list'); cont.innerHTML='';
       state.rollcall.forEach((r,i)=>{
         const div=document.createElement('div'); 
-        div.style.display='flex'; div.style.justifyContent='space-between';
-        div.style.padding='6px'; div.style.borderBottom='1px solid var(--muted)';
-        div.innerHTML=`<div><strong>${r.name}</strong><div style="font-size:12px;color:var(--muted)">${r.status||'Not marked'}</div></div>`;
-        const btns=document.createElement('div'); btns.style.display='flex'; btns.style.gap='6px';
-        const sel=document.createElement('button'); sel.textContent='Select'; sel.onclick=()=>{state.rollcall[i].selected=!state.rollcall[i].selected; renderRoll();}
-        btns.appendChild(sel);
-        div.appendChild(btns);
-        if(r.selected) {
-          div.style.background='var(--accent)'; 
-          div.style.color='white';
+        div.className = 'rollcall-item';
+        if (r.selected) {
+          div.classList.add('selected');
         }
+        
+        div.innerHTML=`
+          <div>
+            <strong>${r.name}</strong>
+            <div class="status">${r.status||'Not marked'}</div>
+          </div>
+          <div class="actions">
+            <button onclick="selectRollcallItem(${i})">Select</button>
+          </div>
+        `;
+        
         cont.appendChild(div);
       })
+    }
+    
+    // NEW: Function to select/de-select roll call items
+    window.selectRollcallItem = function(i) {
+      state.rollcall[i].selected = !state.rollcall[i].selected;
+      renderRoll();
     }
 
     function renderSpeakers(){
@@ -477,10 +528,36 @@
     window.removeSpeaker=(i)=>{state.speakers.splice(i,1);renderSpeakers();}
 
     // Roll Call
-    el('rc-add').onclick=()=>{const name=el('rc-name').value.trim();if(!name)return;state.rollcall.push({name,status:'Not marked'});el('rc-name').value='';renderRoll();}
+    el('rc-add').onclick=()=>{const name=el('rc-name').value.trim();if(!name)return;state.rollcall.push({name,status:'Not marked', selected: false});el('rc-name').value='';renderRoll();}
     el('rc-mark-present').onclick=()=>{state.rollcall.forEach(r=>{if(r.selected)r.status='Present';r.selected=false});renderRoll();}
     el('rc-mark-pv').onclick=()=>{state.rollcall.forEach(r=>{if(r.selected)r.status='Present & Voting';r.selected=false});renderRoll();}
     el('rc-clear').onclick=()=>{if(confirm('Clear all roll call?')){state.rollcall=[];renderRoll();}}
+    
+    // NEW: Add selected roll call items to speaker list
+    el('rc-add-to-speakers').onclick = () => {
+      const selectedDelegates = state.rollcall.filter(r => r.selected);
+      if (selectedDelegates.length === 0) {
+        alert('Please select delegates from the roll call first');
+        return;
+      }
+      
+      selectedDelegates.forEach(delegate => {
+        if (!state.speakers.includes(delegate.name)) {
+          state.speakers.push(delegate.name);
+        }
+        delegate.selected = false; // Clear selection after adding
+      });
+      
+      renderSpeakers();
+      renderRoll();
+      alert(`Added ${selectedDelegates.length} delegate${selectedDelegates.length !== 1 ? 's' : ''} to speaker list`);
+    }
+    
+    // NEW: Clear roll call selection
+    el('rc-clear-selection').onclick = () => {
+      state.rollcall.forEach(r => r.selected = false);
+      renderRoll();
+    }
 
     // Speakers
     el('sp-add').onclick=()=>{const v=el('sp-name').value.trim();if(!v)return;state.speakers.push(v);el('sp-name').value='';renderSpeakers();}
@@ -505,12 +582,14 @@
       const motion={type,duration:dur,speaking:sp,time:new Date().toLocaleTimeString()};
       state.motions.push(motion);renderMotions();
       
-      // FIXED: Start timer for ANY motion with duration, using both minutes AND seconds
-      if (dur > 0 || sp > 0) {
+      // FIXED: Start timer ONLY for Moderated Caucus and Unmoderated Caucus
+      if ((type === "Moderated Caucus" || type === "Unmoderated Caucus") && (dur > 0 || sp > 0)) {
         // Convert minutes to seconds and add speaking time seconds
         const totalSeconds = (dur * 60) + sp;
         startTimer(totalSeconds);
         alert(`Timer started for ${dur} minute${dur !== 1 ? 's' : ''} and ${sp} second${sp !== 1 ? 's' : ''} ${type}`);
+      } else {
+        alert(`Motion "${type}" proposed successfully`);
       }
     }
     function renderMotions(){
@@ -747,6 +826,4 @@
     renderAll()
   </script>
 </body>
-
 </html>
-
