@@ -103,11 +103,11 @@
       border:none;
       cursor:pointer;
       transition:all .25s ease;
-      box-shadow:0 4px 10px rgba(1,139,133,0.4); /* subtle glow */
+      box-shadow:0 4px 10px rgba(1,139,133,0.4);
     }
     button:hover{
       background:#026c68;
-      box-shadow:0 0 15px rgba(1,139,133,0.7); /* brighter glow */
+      box-shadow:0 0 15px rgba(1,139,133,0.7);
       transform:translateY(-1px) scale(1.03);
     }
     .small{font-size:13px}
@@ -122,7 +122,6 @@
       color:var(--footer-color);
     }
     
-    /* New styles for navigation */
     .nav-tabs {
       display: flex;
       gap: 8px;
@@ -142,46 +141,6 @@
       border-color: var(--accent);
     }
     
-    /* New styles for grading system */
-    .grade-display {
-      font-size: 14px;
-      margin-top: 4px;
-      color: var(--muted);
-    }
-    .grade-inputs {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .grade-inputs input {
-      flex: 1;
-    }
-    .grade-summary {
-      margin-top: 8px;
-      padding: 8px;
-      background: var(--input-bg);
-      border-radius: 6px;
-      border: 1px solid var(--input-border);
-    }
-    .grade-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      border-bottom: 1px dashed var(--muted);
-    }
-    .grade-average {
-      font-weight: bold;
-      margin-top: 6px;
-      padding-top: 6px;
-      border-top: 1px solid var(--accent);
-    }
-    .grade-delegate-list {
-      max-height: 400px;
-      overflow-y: auto;
-      margin-top: 12px;
-    }
-    
-    /* Page styles */
     .page {
       display: none;
     }
@@ -189,7 +148,6 @@
       display: block;
     }
     
-    /* NEW: Grading table styles */
     .grading-table {
       width: 100%;
       border-collapse: collapse;
@@ -239,41 +197,61 @@
       margin-bottom: 12px;
     }
     
-    /* NEW: Quick speaker selection styles */
-    .quick-speaker-controls {
-      margin-top: 8px;
+    /* Committee Selection Styles */
+    .committee-selection {
       display: flex;
-      gap: 8px;
-    }
-    .quick-speaker-controls button {
-      flex: 1;
-    }
-    .rollcall-item {
-      display: flex;
-      justify-content: space-between;
+      flex-direction: column;
       align-items: center;
-      padding: 6px;
-      border-bottom: 1px solid var(--muted);
+      justify-content: center;
+      padding: 40px 20px;
+      min-height: 60vh;
+    }
+    .committee-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 1000px;
+      margin-top: 30px;
+    }
+    .committee-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(16,24,40,0.1);
+      transition: all 0.3s ease;
       cursor: pointer;
-      transition: background-color 0.2s;
+      border: 2px solid transparent;
     }
-    .rollcall-item:hover {
-      background-color: var(--input-bg);
+    .committee-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 30px rgba(16,24,40,0.15);
+      border-color: var(--accent);
     }
-    .rollcall-item.selected {
-      background-color: var(--accent);
-      color: white;
+    .committee-card h2 {
+      color: var(--accent);
+      margin-bottom: 12px;
+      font-size: 20px;
     }
-    .rollcall-item .status {
-      font-size: 12px;
+    .committee-card p {
       color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 20px;
     }
-    .rollcall-item.selected .status {
-      color: rgba(255,255,255,0.8);
+    .committee-code {
+      background: var(--input-bg);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+      margin: 15px 0;
+      border: 1px solid var(--input-border);
     }
     
     @media (max-width:1000px){
       .container{grid-template-columns:1fr;}
+      .committee-cards {grid-template-columns: 1fr;}
     }
   </style>
 </head>
@@ -281,177 +259,205 @@
   <header>
     <div>
       <strong>EWCMUN — Logging System</strong>
-      <div style="font-size:13px;opacity:.9">Speaker list, Roll Call, Timers, Motions, Grading</div>
+      <div style="font-size:13px;opacity:.9" id="committee-display">Select a Committee</div>
     </div>
     <button class="theme-toggle" id="theme-toggle">🌙 Dark Mode</button>
   </header>
 
-  <div style="padding: 14px 14px 0 14px;">
-    <div class="nav-tabs">
-      <div class="nav-tab active" data-page="main">Main Control</div>
-      <div class="nav-tab" data-page="grading">Delegate Grading</div>
-    </div>
-  </div>
-
-  <!-- Main Control Page -->
-  <div id="main-page" class="page active">
-    <div class="container">
-      <!-- Left column: Roll call + Speaker list -->
-      <div>
-        <div class="card">
-          <h2>Roll Call</h2>
-          <label>Country name</label>
-          <div style="display:flex;gap:8px">
-            <input id="rc-name" placeholder="e.g. France">
-            <button id="rc-add">Add</button>
-          </div>
-          <div class="list" id="rc-list" style="margin-top:8px"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button id="rc-mark-present">Mark Present</button>
-            <button id="rc-mark-pv">Present & Voting</button>
-            <button id="rc-clear">Clear</button>
-          </div>
-          
-          <!-- NEW: Quick speaker selection controls -->
-          <div class="quick-speaker-controls">
-            <button id="rc-add-to-speakers">Add Selected to Speakers</button>
-            <button id="rc-clear-selection">Clear Selection</button>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:12px">
-          <h2>Speaker's List</h2>
-          <label>Delegate / Country</label>
-          <div style="display:flex;gap:8px">
-            <input id="sp-name" placeholder="Add to speaker list">
-            <button id="sp-add">Add</button>
-          </div>
-          <label>Default Speaking Time (sec)</label>
-          <input id="sp-default" type="number" value="60">
-          <div class="list" id="sp-list"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button id="sp-next">Next Speaker</button>
-            <button id="sp-remove">Remove Selected</button>
-            <button id="sp-clear">Clear</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Middle: Timer, motions -->
-      <div>
-        <div class="card">
-          <h2>Timer / Chair Controls</h2>
-          <div style="display:flex;gap:10px">
-            <div style="flex:1">
-              <label>Current Timer</label>
-              <div class="timer-display" id="timer">00:00</div>
-              <div style="display:flex;gap:8px">
-                <input id="timer-mins" type="number" placeholder="mins" value="1">
-                <input id="timer-secs" type="number" placeholder="secs" value="0">
-                <button id="timer-start">Start</button>
-                <button id="timer-stop">Stop</button>
-                <button id="timer-reset">Reset</button>
-              </div>
-            </div>
-          </div>
-
-          <hr>
-
-          <h2>Motions</h2>
-          <div class="motions">
-            <select id="motion-type">
-              <option>Moderated Caucus</option>
-              <option>Unmoderated Caucus</option>
-              <option>Open/Close Speaker's List</option>
-              <option>Suspend Debate</option>
-              <option>Resume Debate</option>
-              <option>Extension of Caucus</option>
-              <option>Suspend Meeting</option>
-              <option>Adjourn Meeting</option>
-            </select>
-            <div style="display:flex;gap:8px">
-              <input id="motion-duration" placeholder="Duration (mins)" type="number">
-              <input id="motion-speak" placeholder="Speaking time (secs)" type="number">
-              <button id="motion-propose">Propose Motion</button>
-            </div>
-            <div id="motion-log" style="max-height:160px;overflow:auto;margin-top:8px;background:var(--input-bg);padding:8px;border-radius:6px;border:1px solid var(--input-border)"></div>
-          </div>
-
-          <hr>
-
-          <h2>Voting Bloc Simulator</h2>
-          <label>Begin Voting</label>
-          <div style="display:flex;gap:8px">
-            <button id="voting-start">Begin Voting</button>
-            <button id="voting-result">Show Result</button>
-          </div>
-          <div id="voting-log" style="margin-top:8px;padding:8px;background:var(--input-bg);border-radius:6px;border:1px solid var(--input-border)"></div>
-        </div>
-      </div>
-
-      <!-- Right column: Quick settings -->
-      <div>
-        <div class="card">
-          <h2>Quick Settings</h2>
-          <label>Chair name</label>
-          <input id="chair-name" placeholder="e.g. Maria">
-          <label>Conference</label>
-          <input id="conf-name" placeholder="Conference name">
-          <label>Auto-save</label>
-          <select id="autosave"><option value="1">On</option><option value="0">Off</option></select>
-          <button id="save-all">Save Now</button>
-          <button id="load-all">Load Saved</button>
+  <!-- Committee Selection Page -->
+  <div id="committee-selection-page" class="page active">
+    <div class="committee-selection">
+      <h1 style="text-align:center;margin-bottom:10px;">Select Your Committee</h1>
+      <p style="text-align:center;color:var(--muted);max-width:600px;margin-bottom:30px;">
+        Choose your committee to access the MUN logging system. Each committee has its own dedicated workspace.
+      </p>
+      
+      <div class="committee-cards">
+        <div class="committee-card" data-committee="unhrc">
+          <h2>UNHRC</h2>
+          <p>United Nations Human Rights Council</p>
+          <div class="committee-code">Code: UNHRC2025</div>
+          <button>Enter Committee</button>
         </div>
         
-        <div class="card" style="margin-top:12px">
-          <h2>Quick Grading</h2>
-          <p style="font-size:13px;color:var(--muted);margin:0 0 8px 0">
-            For detailed grading, go to the Grading page
-          </p>
-          <button id="go-to-grading">Go to Grading Page</button>
-          <button id="sync-delegates" style="margin-top:8px">Add Delegates</button>
+        <div class="committee-card" data-committee="unga">
+          <h2>UNGA</h2>
+          <p>United Nations General Assembly</p>
+          <div class="committee-code">Code: UNGA2025</div>
+          <button>Enter Committee</button>
+        </div>
+        
+        <div class="committee-card" data-committee="icc">
+          <h2>ICC</h2>
+          <p>International Criminal Court</p>
+          <div class="committee-code">Code: ICC2025</div>
+          <button>Enter Committee</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Grading Page -->
-  <div id="grading-page" class="page">
-    <div class="container" style="grid-template-columns: 1fr;">
-      <div>
-        <div class="card">
-          <h2>MUN Grading Sheet</h2>
-          <div class="weights-info">
+  <!-- Committee Workspace -->
+  <div id="committee-workspace" class="page">
+    <div style="padding: 14px 14px 0 14px;">
+      <div class="nav-tabs">
+        <div class="nav-tab active" data-page="main">Main Control</div>
+        <div class="nav-tab" data-page="grading">Delegate Grading</div>
+        <button id="back-to-committees" style="margin-left:auto;width:auto;">← Back to Committees</button>
+      </div>
+    </div>
+
+    <!-- Main Control Page -->
+    <div id="main-page" class="page active">
+      <div class="container">
+        <!-- Left column: Roll call + Speaker list -->
+        <div>
+          <div class="card">
+            <h2>Roll Call</h2>
+            <label>Country name</label>
+            <div style="display:flex;gap:8px">
+              <input id="rc-name" placeholder="e.g. France">
+              <button id="rc-add">Add</button>
+            </div>
+            <div class="list" id="rc-list" style="margin-top:8px"></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="rc-mark-present">Mark Present</button>
+              <button id="rc-mark-pv">Present & Voting</button>
+              <button id="rc-clear">Clear</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h2>Speaker's List</h2>
+            <label>Delegate / Country</label>
+            <div style="display:flex;gap:8px">
+              <input id="sp-name" placeholder="Add to speaker list">
+              <button id="sp-add">Add</button>
+            </div>
+            <label>Default speaking time (sec)</label>
+            <input id="sp-default" type="number" value="60">
+            <div class="list" id="sp-list"></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button id="sp-next">Next Speaker</button>
+              <button id="sp-remove">Remove Selected</button>
+              <button id="sp-clear">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle: Timer, motions -->
+        <div>
+          <div class="card">
+            <h2>Timer / Chair Controls</h2>
+            <div style="display:flex;gap:10px">
+              <div style="flex:1">
+                <label>Current Timer</label>
+                <div class="timer-display" id="timer">00:00</div>
+                <div style="display:flex;gap:8px">
+                  <input id="timer-mins" type="number" placeholder="mins" value="1">
+                  <input id="timer-secs" type="number" placeholder="secs" value="0">
+                  <button id="timer-start">Start</button>
+                  <button id="timer-stop">Stop</button>
+                  <button id="timer-reset">Reset</button>
+                </div>
+              </div>
+            </div>
+
+            <hr>
+
+            <h2>Motions</h2>
+            <div class="motions">
+              <select id="motion-type">
+                <option>Moderated Caucus</option>
+                <option>Unmoderated Caucus</option>
+                <option>Open/Close Speaker's List</option>
+                <option>Suspend Debate</option>
+                <option>Resume Debate</option>
+                <option>Extension of Caucus</option>
+                <option>Suspend Meeting</option>
+                <option>Adjourn Meeting</option>
+              </select>
+              <div style="display:flex;gap:8px">
+                <input id="motion-duration" placeholder="Duration (mins)" type="number">
+                <input id="motion-speak" placeholder="Speaking time (secs)" type="number">
+                <button id="motion-propose">Propose Motion</button>
+              </div>
+              <div id="motion-log" style="max-height:160px;overflow:auto;margin-top:8px;background:var(--input-bg);padding:8px;border-radius:6px;border:1px solid var(--input-border)"></div>
+            </div>
+
+            <hr>
+
+            <h2>Voting Bloc Simulator</h2>
+            <label>Begin Voting</label>
+            <div style="display:flex;gap:8px">
+              <button id="voting-start">Begin Voting</button>
+              <button id="voting-result">Show Result</button>
+            </div>
+            <div id="voting-log" style="margin-top:8px;padding:8px;background:var(--input-bg);border-radius:6px;border:1px solid var(--input-border)"></div>
+          </div>
+        </div>
+
+        <!-- Right column: Quick settings -->
+        <div>
+          <div class="card">
+            <h2>Quick Settings</h2>
+            <label>Chair name</label>
+            <input id="chair-name" placeholder="e.g. Maria">
+            <label>Conference</label>
+            <input id="conf-name" placeholder="Conference name">
+            <label>Auto-save</label>
+            <select id="autosave"><option value="1">On</option><option value="0">Off</option></select>
+            <button id="save-all">Save Now</button>
+            <button id="load-all">Load Saved</button>
           </div>
           
-          <div class="grading-controls">
-            <button id="addDelegates">Add Delegates</button>
-            <button id="clearAll">Clear All</button>
-            <button id="exportCsv">Export CSV</button>
-            <div style="margin-left:auto" class="small">Scores: 1 (None) — 5 (Excellent)</div>
+          <div class="card" style="margin-top:12px">
+            <h2>Quick Grading</h2>
+            <p style="font-size:13px;color:var(--muted);margin:0 0 8px 0">
+              For detailed grading, go to the Grading page
+            </p>
+            <button id="go-to-grading">Go to Grading Page</button>
+            <button id="sync-delegates" style="margin-top:8px">Add Delegates from Roll Call</button>
           </div>
-          
-          <table class="grading-table" id="sheet">
-            <thead>
-              <tr>
-                <th>Delegate</th>
-                <th>Research<br/>(20%)</th>
-                <th>Participation<br/>(25%)</th>
-                <th>Diplomacy<br/>(20%)</th>
-                <th>Speech<br/>(15%)</th>
-                <th>Writing<br/>(10%)</th>
-                <th>Leadership<br/>(10%)</th>
-                <th>Total %</th>
-                <th>Award</th>
-                <th>Remove</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- rows added here -->
-            </tbody>
-          </table>
-          
-          <div style="margin-top:12px;font-size:13px;color:var(--muted)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Grading Page -->
+    <div id="grading-page" class="page">
+      <div class="container" style="grid-template-columns: 1fr;">
+        <div>
+          <div class="card">
+            <h2>MUN Grading Sheet</h2>
+            <div class="weights-info">
+            </div>
+            
+            <div class="grading-controls">
+              <button id="addDelegates">Add Delegates</button>
+              <button id="clearAll">Clear All</button>
+              <button id="exportCsv">Export CSV</button>
+              <div style="margin-left:auto" class="small">Scores: 1 (None) — 5 (Excellent)</div>
+            </div>
+            
+            <table class="grading-table" id="sheet">
+              <thead>
+                <tr>
+                  <th>Delegate</th>
+                  <th>Research<br/>(20%)</th>
+                  <th>Participation<br/>(25%)</th>
+                  <th>Diplomacy<br/>(20%)</th>
+                  <th>Speech<br/>(15%)</th>
+                  <th>Writing<br/>(10%)</th>
+                  <th>Leadership<br/>(10%)</th>
+                  <th>Total %</th>
+                  <th>Award</th>
+                  <th>Remove</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- rows added here -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -461,63 +467,160 @@
   <footer>© EWCMUN2025</footer>
 
   <script>
-    const state = {
-      rollcall: [],
-      speakers: [],
-      currentSpeaker: null,
-      timer: {remaining:0, interval:null},
-      motions: [],
-      voting: {active:false, votes:[]},
-      // NEW: Grading system state
-      grades: {} // Format: {delegateName: [{category, score, timestamp}]}
+    // Committee Management
+    let currentCommittee = null;
+    const committees = {
+      'unhrc': {
+        name: 'UN Human Rights Council',
+        code: 'UNHRC2024',
+        data: {
+          rollcall: [],
+          speakers: [],
+          currentSpeaker: null,
+          timer: {remaining:0, interval:null},
+          motions: [],
+          voting: {active:false, votes:[]},
+          grades: {},
+          settings: {chairName: '', conference: ''}
+        }
+      },
+      'unga': {
+        name: 'UN General Assembly',
+        code: 'UNGA2024',
+        data: {
+          rollcall: [],
+          speakers: [],
+          currentSpeaker: null,
+          timer: {remaining:0, interval:null},
+          motions: [],
+          voting: {active:false, votes:[]},
+          grades: {},
+          settings: {chairName: '', conference: ''}
+        }
+      },
+      'icc': {
+        name: 'International Criminal Court',
+        code: 'ICC2024',
+        data: {
+          rollcall: [],
+          speakers: [],
+          currentSpeaker: null,
+          timer: {remaining:0, interval:null},
+          motions: [],
+          voting: {active:false, votes:[]},
+          grades: {},
+          settings: {chairName: '', conference: ''}
+        }
+      }
+    };
+
+    // Get current committee data
+    function getCurrentCommitteeData() {
+      return committees[currentCommittee]?.data;
     }
 
-    // Create audio element for timer sound
+    // Committee Selection
+    document.querySelectorAll('.committee-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const committeeId = card.getAttribute('data-committee');
+        enterCommittee(committeeId);
+      });
+    });
+
+    function enterCommittee(committeeId) {
+      currentCommittee = committeeId;
+      document.getElementById('committee-selection-page').classList.remove('active');
+      document.getElementById('committee-workspace').classList.add('active');
+      document.getElementById('committee-display').textContent = committees[committeeId].name;
+      
+      // Load committee data
+      loadCommitteeData();
+      renderAll();
+      renderGradingTable();
+    }
+
+    // Back to committees
+    document.getElementById('back-to-committees').addEventListener('click', () => {
+      saveCommitteeData();
+      document.getElementById('committee-workspace').classList.remove('active');
+      document.getElementById('committee-selection-page').classList.add('active');
+      document.getElementById('committee-display').textContent = 'Select a Committee';
+      currentCommittee = null;
+    });
+
+    // Save/Load committee data to localStorage
+    function saveCommitteeData() {
+      if (!currentCommittee) return;
+      
+      // Save grading data from current table
+      const state = getCurrentCommitteeData();
+      state.grades = {};
+      
+      const tbody = document.querySelector('#sheet tbody');
+      tbody.querySelectorAll('tr').forEach(tr => {
+        const name = tr.querySelector('.delegate-name').textContent;
+        const grades = {
+          research: parseInt(tr.querySelector('input[data-key="research"]').value) || 3,
+          participation: parseInt(tr.querySelector('input[data-key="participation"]').value) || 3,
+          diplomacy: parseInt(tr.querySelector('input[data-key="diplomacy"]').value) || 3,
+          speech: parseInt(tr.querySelector('input[data-key="speech"]').value) || 3,
+          writing: parseInt(tr.querySelector('input[data-key="writing"]').value) || 3,
+          leadership: parseInt(tr.querySelector('input[data-key="leadership"]').value) || 3
+        };
+        state.grades[name] = grades;
+      });
+      
+      localStorage.setItem(`ewcmun_${currentCommittee}`, JSON.stringify(state));
+    }
+
+    function loadCommitteeData() {
+      if (!currentCommittee) return;
+      const saved = localStorage.getItem(`ewcmun_${currentCommittee}`);
+      if (saved) {
+        Object.assign(getCurrentCommitteeData(), JSON.parse(saved));
+      }
+    }
+
+    // Timer sound
     const timerSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
     
-    // Function to play the timer sound
     function playTimerSound() {
       try {
         timerSound.play();
       } catch (e) {
-        // Fallback: Use browser's built-in beep
-        console.log("\u0007"); // This might not work in all browsers
+        console.log("\u0007");
       }
     }
 
+    // Utility functions
     function el(id){return document.getElementById(id)}
     
-    // NEW: Enhanced roll call rendering with click-to-select functionality
     function renderRoll(){
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
       const cont=el('rc-list'); cont.innerHTML='';
       state.rollcall.forEach((r,i)=>{
         const div=document.createElement('div'); 
-        div.className = 'rollcall-item';
-        if (r.selected) {
-          div.classList.add('selected');
+        div.style.display='flex'; div.style.justifyContent='space-between';
+        div.style.padding='6px'; div.style.borderBottom='1px solid var(--muted)';
+        div.innerHTML=`<div><strong>${r.name}</strong><div style="font-size:12px;color:var(--muted)">${r.status||'Not marked'}</div></div>`;
+        const btns=document.createElement('div'); btns.style.display='flex'; btns.style.gap='6px';
+        const sel=document.createElement('button'); sel.textContent='Select'; sel.onclick=()=>{state.rollcall[i].selected=!state.rollcall[i].selected; renderRoll();}
+        btns.appendChild(sel);
+        div.appendChild(btns);
+        if(r.selected) {
+          div.style.background='var(--accent)'; 
+          div.style.color='white';
         }
-        
-        div.innerHTML=`
-          <div>
-            <strong>${r.name}</strong>
-            <div class="status">${r.status||'Not marked'}</div>
-          </div>
-          <div class="actions">
-            <button onclick="selectRollcallItem(${i})">Select</button>
-          </div>
-        `;
-        
         cont.appendChild(div);
       })
     }
-    
-    // NEW: Function to select/de-select roll call items
-    window.selectRollcallItem = function(i) {
-      state.rollcall[i].selected = !state.rollcall[i].selected;
-      renderRoll();
-    }
 
     function renderSpeakers(){
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
       const cont=el('sp-list'); cont.innerHTML='';
       state.speakers.forEach((s,i)=>{
         const div=document.createElement('div'); div.className='speaker';
@@ -525,74 +628,169 @@
         cont.appendChild(div);
       })
     }
-    window.removeSpeaker=(i)=>{state.speakers.splice(i,1);renderSpeakers();}
+    window.removeSpeaker=(i)=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      state.speakers.splice(i,1);
+      renderSpeakers();
+      saveCommitteeData();
+    }
 
     // Roll Call
-    el('rc-add').onclick=()=>{const name=el('rc-name').value.trim();if(!name)return;state.rollcall.push({name,status:'Not marked', selected: false});el('rc-name').value='';renderRoll();}
-    el('rc-mark-present').onclick=()=>{state.rollcall.forEach(r=>{if(r.selected)r.status='Present';r.selected=false});renderRoll();}
-    el('rc-mark-pv').onclick=()=>{state.rollcall.forEach(r=>{if(r.selected)r.status='Present & Voting';r.selected=false});renderRoll();}
-    el('rc-clear').onclick=()=>{if(confirm('Clear all roll call?')){state.rollcall=[];renderRoll();}}
-    
-    // NEW: Add selected roll call items to speaker list
-    el('rc-add-to-speakers').onclick = () => {
-      const selectedDelegates = state.rollcall.filter(r => r.selected);
-      if (selectedDelegates.length === 0) {
-        alert('Please select delegates from the roll call first');
-        return;
-      }
+    el('rc-add').onclick=()=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
       
-      selectedDelegates.forEach(delegate => {
-        if (!state.speakers.includes(delegate.name)) {
-          state.speakers.push(delegate.name);
-        }
-        delegate.selected = false; // Clear selection after adding
-      });
-      
-      renderSpeakers();
+      const name=el('rc-name').value.trim();
+      if(!name)return;
+      state.rollcall.push({name,status:'Not marked'});
+      el('rc-name').value='';
       renderRoll();
-      alert(`Added ${selectedDelegates.length} delegate${selectedDelegates.length !== 1 ? 's' : ''} to speaker list`);
+      saveCommitteeData();
     }
-    
-    // NEW: Clear roll call selection
-    el('rc-clear-selection').onclick = () => {
-      state.rollcall.forEach(r => r.selected = false);
+    el('rc-mark-present').onclick=()=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      state.rollcall.forEach(r=>{if(r.selected)r.status='Present';r.selected=false});
       renderRoll();
+      saveCommitteeData();
+    }
+    el('rc-mark-pv').onclick=()=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      state.rollcall.forEach(r=>{if(r.selected)r.status='Present & Voting';r.selected=false});
+      renderRoll();
+      saveCommitteeData();
+    }
+    el('rc-clear').onclick=()=>{
+      if(confirm('Clear all roll call?')){
+        const state = getCurrentCommitteeData();
+        if (!state) return;
+        
+        state.rollcall=[];
+        renderRoll();
+        saveCommitteeData();
+      }
     }
 
     // Speakers
-    el('sp-add').onclick=()=>{const v=el('sp-name').value.trim();if(!v)return;state.speakers.push(v);el('sp-name').value='';renderSpeakers();}
-    el('sp-clear').onclick=()=>{if(confirm('Clear speaker list?')){state.speakers=[];renderSpeakers();}}
-    el('sp-next').onclick=()=>{if(state.speakers.length===0){alert('No speakers');return;}const s=state.speakers.shift();renderSpeakers();startSpeakerTimer(s);}
-    function startSpeakerTimer(name){const secs=Number(el('sp-default').value)||60;startTimer(secs);state.currentSpeaker=name;alert(`Now speaking: ${name}`);}
+    el('sp-add').onclick=()=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      const v=el('sp-name').value.trim();
+      if(!v)return;
+      state.speakers.push(v);
+      el('sp-name').value='';
+      renderSpeakers();
+      saveCommitteeData();
+    }
+    el('sp-clear').onclick=()=>{
+      if(confirm('Clear speaker list?')){
+        const state = getCurrentCommitteeData();
+        if (!state) return;
+        
+        state.speakers=[];
+        renderSpeakers();
+        saveCommitteeData();
+      }
+    }
+    el('sp-next').onclick=()=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      if(state.speakers.length===0){alert('No speakers');return;}
+      const s=state.speakers.shift();
+      renderSpeakers();
+      startSpeakerTimer(s);
+      saveCommitteeData();
+    }
+    function startSpeakerTimer(name){
+      const secs=Number(el('sp-default').value)||60;
+      startTimer(secs);
+      
+      const state = getCurrentCommitteeData();
+      if (state) {
+        state.currentSpeaker=name;
+      }
+      alert(`Now speaking: ${name}`);
+    }
 
     // Timer
     function formatTime(s){const m=Math.floor(s/60);const sec=s%60;return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`}
-    function renderTimer(){el('timer').textContent=formatTime(state.timer.remaining)}
-    function startTimer(seconds){stopTimer();state.timer.remaining=seconds;renderTimer();state.timer.interval=setInterval(()=>{state.timer.remaining--;renderTimer();if(state.timer.remaining<=0){stopTimer();playTimerSound();alert('Time is up!')}},1000);}
-    function stopTimer(){if(state.timer.interval)clearInterval(state.timer.interval);state.timer.interval=null;}
-    el('timer-start').onclick=()=>{const m=Number(el('timer-mins').value||0);const s=Number(el('timer-secs').value||0);startTimer(m*60+s);}
+    function renderTimer(){
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      el('timer').textContent=formatTime(state.timer.remaining)
+    }
+    function startTimer(seconds){
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      stopTimer();
+      state.timer.remaining=seconds;
+      renderTimer();
+      state.timer.interval=setInterval(()=>{
+        state.timer.remaining--;
+        renderTimer();
+        if(state.timer.remaining<=0){
+          stopTimer();
+          playTimerSound();
+          alert('Time is up!');
+        }
+      },1000);
+      saveCommitteeData();
+    }
+    function stopTimer(){
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      if(state.timer.interval)clearInterval(state.timer.interval);
+      state.timer.interval=null;
+      saveCommitteeData();
+    }
+    el('timer-start').onclick=()=>{
+      const m=Number(el('timer-mins').value||0);
+      const s=Number(el('timer-secs').value||0);
+      startTimer(m*60+s);
+    }
     el('timer-stop').onclick=()=>{stopTimer();}
-    el('timer-reset').onclick=()=>{stopTimer();state.timer.remaining=0;renderTimer();}
+    el('timer-reset').onclick=()=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      stopTimer();
+      state.timer.remaining=0;
+      renderTimer();
+      saveCommitteeData();
+    }
 
     // Motions
     el('motion-propose').onclick=()=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
       const type=el('motion-type').value;
       const dur=Number(el('motion-duration').value)||0;
       const sp=Number(el('motion-speak').value)||30;
       const motion={type,duration:dur,speaking:sp,time:new Date().toLocaleTimeString()};
-      state.motions.push(motion);renderMotions();
+      state.motions.push(motion);
+      renderMotions();
       
-      // FIXED: Start timer ONLY for Moderated Caucus and Unmoderated Caucus
-      if ((type === "Moderated Caucus" || type === "Unmoderated Caucus") && (dur > 0 || sp > 0)) {
-        // Convert minutes to seconds and add speaking time seconds
+      if (dur > 0 || sp > 0) {
         const totalSeconds = (dur * 60) + sp;
         startTimer(totalSeconds);
         alert(`Timer started for ${dur} minute${dur !== 1 ? 's' : ''} and ${sp} second${sp !== 1 ? 's' : ''} ${type}`);
-      } else {
-        alert(`Motion "${type}" proposed successfully`);
       }
+      saveCommitteeData();
     }
     function renderMotions(){
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
       const node=el('motion-log');node.innerHTML='';
       state.motions.slice().reverse().forEach(m=>{
         const d=document.createElement('div');
@@ -605,31 +803,42 @@
 
     // Voting
     el('voting-start').onclick=()=>{
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
       if(state.voting.active){alert('Voting already active');return}
-      state.voting.active=true;state.voting.votes=[];
+      state.voting.active=true;
+      state.voting.votes=[];
       el('voting-log').innerHTML='Voting started — click names to cast votes.';
       const cont=document.createElement('div');
       state.rollcall.forEach((r,idx)=>{
         const b=document.createElement('button');b.textContent=r.name;b.style.margin='4px';b.onclick=(()=>{return function(){castVote(idx)}})();cont.appendChild(b);
       });
       el('voting-log').appendChild(cont);
+      saveCommitteeData();
     }
     function castVote(idx){
-      if(!state.voting.active)return;
+      const state = getCurrentCommitteeData();
+      if (!state || !state.voting.active) return;
+      
       const choice=prompt(`Vote for ${state.rollcall[idx].name} (Y/N/A for abstain)`);
       if(!choice)return;
       state.voting.votes.push({country:state.rollcall[idx].name,vote:choice.toUpperCase()});
       el('voting-log').innerHTML=`Cast ${state.voting.votes.length} votes.`;
+      saveCommitteeData();
     }
     el('voting-result').onclick=()=>{
-      if(!state.voting.active)return alert('Start voting first');
+      const state = getCurrentCommitteeData();
+      if (!state || !state.voting.active) return alert('Start voting first');
+      
       state.voting.active=false;
       const tally={Y:0,N:0,A:0};
       state.voting.votes.forEach(v=>{tally[v.vote[0]]=(tally[v.vote[0]]||0)+1});
       el('voting-log').innerHTML=`Results — For: ${tally.Y||0} Against: ${tally.N||0} Abstain: ${tally.A||0}`;
+      saveCommitteeData();
     }
 
-    // NEW: Enhanced Grading System with Weighted Categories
+    // Grading System
     const weights = { research:20, participation:25, diplomacy:20, speech:15, writing:10, leadership:10 };
     const tbody = document.querySelector('#sheet tbody');
     const addDelegatesBtn = document.getElementById('addDelegates');
@@ -637,14 +846,12 @@
     const exportBtn = document.getElementById('exportCsv');
     const syncDelegatesBtn = document.getElementById('sync-delegates');
 
-    // Function to check if delegate already exists in grading table
     function delegateExists(name) {
       const existingNames = Array.from(tbody.querySelectorAll('.delegate-name')).map(td => td.textContent.trim());
       return existingNames.includes(name.trim());
     }
 
     function newRow(name=''){
-      // Don't add duplicate delegates
       if (name && delegateExists(name)) {
         return;
       }
@@ -666,13 +873,20 @@
       tbody.appendChild(tr);
       attachListeners(tr);
       calculateRow(tr);
+      saveCommitteeData();
     }
 
     function attachListeners(tr){
       tr.querySelectorAll('input[type=number]').forEach(inp=>{
-        inp.addEventListener('input', ()=>calculateRow(tr));
+        inp.addEventListener('input', ()=>{
+          calculateRow(tr);
+          saveCommitteeData();
+        });
       });
-      tr.querySelector('.remove').addEventListener('click', ()=>{ tr.remove(); });
+      tr.querySelector('.remove').addEventListener('click', ()=>{ 
+        tr.remove(); 
+        saveCommitteeData();
+      });
     }
 
     function calculateRow(tr){
@@ -680,7 +894,7 @@
       let percent = 0;
       inputs.forEach(i=>{
         const key = i.dataset.key;
-        const score = Number(i.value) || 0; // 1-5
+        const score = Number(i.value) || 0;
         const w = weights[key] || 0;
         percent += (score/5) * w;
       });
@@ -698,8 +912,10 @@
       return 'Participant';
     }
 
-    // Function to sync delegates from roll call to grading table
     function syncRollCallToGrading() {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
       let addedCount = 0;
       
       state.rollcall.forEach(delegate => {
@@ -716,15 +932,46 @@
       }
     }
 
-    // Remove the individual add row functionality - only allow adding from roll call
+    function renderGradingTable() {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      tbody.innerHTML = '';
+      
+      // Add delegates from grades data
+      if (state.grades && Object.keys(state.grades).length > 0) {
+        Object.keys(state.grades).forEach(delegateName => {
+          const gradeData = state.grades[delegateName];
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="delegate-name">${delegateName}</td>
+            <td><input type="number" min="1" max="5" value="${gradeData.research || 3}" data-key="research" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.participation || 3}" data-key="participation" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.diplomacy || 3}" data-key="diplomacy" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.speech || 3}" data-key="speech" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.writing || 3}" data-key="writing" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.leadership || 3}" data-key="leadership" /></td>
+            <td class="total">0</td>
+            <td class="award">-</td>
+            <td><button class="remove">Remove</button></td>
+          `;
+          tbody.appendChild(tr);
+          attachListeners(tr);
+          calculateRow(tr);
+        });
+      }
+    }
+
     addDelegatesBtn.addEventListener('click', syncRollCallToGrading);
     clearBtn.addEventListener('click', ()=>{ 
       if (confirm('Clear all grading data?')) {
         tbody.innerHTML=''; 
+        const state = getCurrentCommitteeData();
+        if (state) state.grades = {};
+        saveCommitteeData();
       }
     });
     
-    // Add event listeners for sync buttons
     syncDelegatesBtn.addEventListener('click', syncRollCallToGrading);
 
     exportBtn.addEventListener('click', ()=>{
@@ -762,34 +1009,35 @@
       a.remove();
     }
 
-    // Initialize with sample rows
-    document.addEventListener('DOMContentLoaded', () => {
-      // No longer adding sample rows automatically
-    });
-
-    // NEW: Navigation System
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const pageId = tab.getAttribute('data-page');
-        
-        // Update active tab
-        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        
-        // Show active page
-        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-        document.getElementById(`${pageId}-page`).classList.add('active');
+    // Navigation System
+    function setupNavigation() {
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const pageId = tab.getAttribute('data-page');
+          
+          // Update active tab
+          document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          
+          // Show active page within committee workspace
+          document.querySelectorAll('#committee-workspace .page').forEach(page => {
+            page.classList.remove('active');
+          });
+          document.getElementById(`${pageId}-page`).classList.add('active');
+        });
       });
-    });
-    
+    }
+
     // Go to grading page button
-    el('go-to-grading').onclick = () => {
+    document.getElementById('go-to-grading').addEventListener('click', () => {
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       document.querySelector('.nav-tab[data-page="grading"]').classList.add('active');
       
-      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.querySelectorAll('#committee-workspace .page').forEach(page => {
+        page.classList.remove('active');
+      });
       document.getElementById('grading-page').classList.add('active');
-    };
+    });
 
     // Dark Mode Toggle
     const themeToggle = el('theme-toggle');
@@ -814,16 +1062,33 @@
     }
 
     // Save / Load
-    el('save-all').onclick=()=>{localStorage.setItem('wxmun_state',JSON.stringify(state));alert('Saved locally');}
-    el('load-all').onclick=()=>{const s=localStorage.getItem('wxmun_state');if(!s)return alert('No saved state');Object.assign(state,JSON.parse(s));renderAll();alert('Loaded');}
+    el('save-all').onclick=()=>{
+      saveCommitteeData();
+      alert('Saved locally');
+    }
+    el('load-all').onclick=()=>{
+      loadCommitteeData();
+      renderAll();
+      renderGradingTable();
+      alert('Loaded');
+    }
+    
     function renderAll(){
       renderRoll();
       renderSpeakers();
       renderMotions();
+      renderTimer();
     }
-    setInterval(()=>{if(el('autosave').value==='1')localStorage.setItem('wxmun_state',JSON.stringify(state));},10000);
 
-    renderAll()
+    // Auto-save
+    setInterval(()=>{
+      if(el('autosave').value==='1') saveCommitteeData();
+    },10000);
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      setupNavigation();
+    });
   </script>
 </body>
 </html>
