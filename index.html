@@ -273,6 +273,20 @@
       color: white;
     }
     
+    /* Motion History Reset Button */
+    .motion-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    /* Delegate Name Input */
+    .delegate-name-input {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    
     @media (max-width:1000px){
       .container{grid-template-columns:1fr;}
       .committee-cards {grid-template-columns: 1fr;}
@@ -350,6 +364,7 @@
             <div style="display:flex;gap:8px;margin-top:8px">
               <button id="rc-mark-present">Mark Present</button>
               <button id="rc-mark-pv">Present & Voting</button>
+              <button id="rc-add-to-speakers">Add to Speakers</button>
               <button id="rc-clear">Clear</button>
             </div>
           </div>
@@ -408,6 +423,9 @@
                 <input id="motion-duration" placeholder="Duration (mins)" type="number">
                 <input id="motion-speak" placeholder="Speaking time (secs)" type="number">
                 <button id="motion-propose">Propose Motion</button>
+              </div>
+              <div class="motion-controls">
+                <button id="motion-reset">Reset Motion History</button>
               </div>
               <div id="motion-log" style="max-height:160px;overflow:auto;margin-top:8px;background:var(--input-bg);padding:8px;border-radius:6px;border:1px solid var(--input-border)"></div>
             </div>
@@ -469,7 +487,8 @@
             <table class="grading-table" id="sheet">
               <thead>
                 <tr>
-                  <th>Delegate</th>
+                  <th>Country</th>
+                  <th>Delegate Name</th>
                   <th>Research<br/>(20%)</th>
                   <th>Participation<br/>(25%)</th>
                   <th>Diplomacy<br/>(20%)</th>
@@ -629,8 +648,10 @@
       
       const tbody = document.querySelector('#sheet tbody');
       tbody.querySelectorAll('tr').forEach(tr => {
-        const name = tr.querySelector('.delegate-name').textContent;
+        const country = tr.querySelector('.delegate-country').textContent;
+        const delegateName = tr.querySelector('.delegate-name-input').value || '';
         const grades = {
+          delegateName: delegateName,
           research: parseInt(tr.querySelector('input[data-key="research"]').value) || 3,
           participation: parseInt(tr.querySelector('input[data-key="participation"]').value) || 3,
           diplomacy: parseInt(tr.querySelector('input[data-key="diplomacy"]').value) || 3,
@@ -638,7 +659,7 @@
           writing: parseInt(tr.querySelector('input[data-key="writing"]').value) || 3,
           leadership: parseInt(tr.querySelector('input[data-key="leadership"]').value) || 3
         };
-        state.grades[name] = grades;
+        state.grades[country] = grades;
       });
       
       // Save to Firestore
@@ -776,6 +797,33 @@
       renderRoll();
       saveToFirestore();
     }
+    // NEW: Add selected delegates to speakers list
+    el('rc-add-to-speakers').onclick = () => {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      const selectedDelegates = state.rollcall.filter(r => r.selected);
+      
+      if (selectedDelegates.length === 0) {
+        alert('Please select delegates first by clicking "Select" next to their names');
+        return;
+      }
+      
+      selectedDelegates.forEach(delegate => {
+        // Check if delegate is already in speakers list to avoid duplicates
+        if (!state.speakers.includes(delegate.name)) {
+          state.speakers.push(delegate.name);
+        }
+        // Clear selection after adding
+        delegate.selected = false;
+      });
+      
+      renderRoll();
+      renderSpeakers();
+      saveToFirestore();
+      
+      alert(`Added ${selectedDelegates.length} delegate${selectedDelegates.length !== 1 ? 's' : ''} to speakers list`);
+    }
     el('rc-clear').onclick=()=>{
       if(confirm('Clear all roll call?')){
         const state = getCurrentCommitteeData();
@@ -887,18 +935,32 @@
       
       const type=el('motion-type').value;
       const dur=Number(el('motion-duration').value)||0;
-      const sp=Number(el('motion-speak').value)||30;
+      const sp=Number(el('motion-speak').value)||0;
       const motion={type,duration:dur,speaking:sp,time:new Date().toLocaleTimeString()};
       state.motions.push(motion);
       renderMotions();
       
-      if (dur > 0 || sp > 0) {
-        const totalSeconds = (dur * 60) + sp;
+      // Only start timer for moderated and unmoderated caucuses
+      if ((type === 'Moderated Caucus' || type === 'Unmoderated Caucus') && dur > 0) {
+        const totalSeconds = dur * 60;
         startTimer(totalSeconds);
-        alert(`Timer started for ${dur} minute${dur !== 1 ? 's' : ''} and ${sp} second${sp !== 1 ? 's' : ''} ${type}`);
+        alert(`Timer started for ${dur} minute${dur !== 1 ? 's' : ''} ${type}`);
       }
       saveToFirestore();
     }
+    
+    // Reset motion history
+    el('motion-reset').onclick=()=>{
+      if(confirm('Clear all motion history?')){
+        const state = getCurrentCommitteeData();
+        if (!state) return;
+        
+        state.motions=[];
+        renderMotions();
+        saveToFirestore();
+      }
+    }
+    
     function renderMotions(){
       const state = getCurrentCommitteeData();
       if (!state) return;
@@ -908,7 +970,7 @@
         const d=document.createElement('div');
         d.style.borderBottom='1px solid var(--muted)';
         d.style.padding='6px';
-        d.innerHTML=`<strong>${m.type}</strong> — ${m.duration||'-'} min — ${m.speaking}s — <span style="font-size:12px;color:var(--muted)">proposed ${m.time}</span>`;
+        d.innerHTML=`<strong>${m.type}</strong> — ${m.duration||'-'} min — ${m.speaking||0}s — <span style="font-size:12px;color:var(--muted)">proposed ${m.time}</span>`;
         node.appendChild(d);
       })
     }
@@ -958,19 +1020,20 @@
     const exportBtn = document.getElementById('exportCsv');
     const syncDelegatesBtn = document.getElementById('sync-delegates');
 
-    function delegateExists(name) {
-      const existingNames = Array.from(tbody.querySelectorAll('.delegate-name')).map(td => td.textContent.trim());
-      return existingNames.includes(name.trim());
+    function delegateExists(country) {
+      const existingCountries = Array.from(tbody.querySelectorAll('.delegate-country')).map(td => td.textContent.trim());
+      return existingCountries.includes(country.trim());
     }
 
-    function newRow(name=''){
-      if (name && delegateExists(name)) {
+    function newRow(country='', delegateName=''){
+      if (country && delegateExists(country)) {
         return;
       }
       
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="delegate-name">${name || 'New Delegate'}</td>
+        <td class="delegate-country">${country || 'New Country'}</td>
+        <td><input type="text" class="delegate-name-input" value="${delegateName || ''}" placeholder="Delegate name" /></td>
         <td><input type="number" min="1" max="5" value="3" data-key="research" /></td>
         <td><input type="number" min="1" max="5" value="3" data-key="participation" /></td>
         <td><input type="number" min="1" max="5" value="3" data-key="diplomacy" /></td>
@@ -995,6 +1058,12 @@
           saveToFirestore();
         });
       });
+      
+      // Save delegate name when changed
+      tr.querySelector('.delegate-name-input').addEventListener('input', () => {
+        saveToFirestore();
+      });
+      
       tr.querySelector('.remove').addEventListener('click', ()=>{ 
         tr.remove(); 
         saveToFirestore();
@@ -1052,11 +1121,12 @@
       
       // Add delegates from grades data
       if (state.grades && Object.keys(state.grades).length > 0) {
-        Object.keys(state.grades).forEach(delegateName => {
-          const gradeData = state.grades[delegateName];
+        Object.keys(state.grades).forEach(country => {
+          const gradeData = state.grades[country];
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="delegate-name">${delegateName}</td>
+            <td class="delegate-country">${country}</td>
+            <td><input type="text" class="delegate-name-input" value="${gradeData.delegateName || ''}" placeholder="Delegate name" /></td>
             <td><input type="number" min="1" max="5" value="${gradeData.research || 3}" data-key="research" /></td>
             <td><input type="number" min="1" max="5" value="${gradeData.participation || 3}" data-key="participation" /></td>
             <td><input type="number" min="1" max="5" value="${gradeData.diplomacy || 3}" data-key="diplomacy" /></td>
@@ -1089,8 +1159,9 @@
     exportBtn.addEventListener('click', ()=>{
       const rows = [];
       tbody.querySelectorAll('tr').forEach(r=>{
-        const name = r.querySelector('.delegate-name').textContent;
-        const data = { name };
+        const country = r.querySelector('.delegate-country').textContent;
+        const delegateName = r.querySelector('.delegate-name-input').value;
+        const data = { country, delegateName };
         r.querySelectorAll('input[type=number]').forEach(i=> data[i.dataset.key]=i.value);
         data.total = r.querySelector('.total').textContent;
         data.award = r.querySelector('.award').textContent;
@@ -1102,7 +1173,7 @@
 
     function toCsv(rows){
       if(rows.length===0) return '';
-      const keys = ['name','research','participation','diplomacy','speech','writing','leadership','total','award'];
+      const keys = ['country','delegateName','research','participation','diplomacy','speech','writing','leadership','total','award'];
       const lines = [keys.join(',')];
       rows.forEach(r=>{
         const line = keys.map(k=>`"${(r[k]||'').toString().replace(/"/g,'""')}"`).join(',');
