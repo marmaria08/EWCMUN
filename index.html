@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>EWCMUN - Logging System</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  
   <style>
     :root{
       --card-bg:#ffffff;
@@ -248,6 +253,25 @@
       margin: 15px 0;
       border: 1px solid var(--input-border);
     }
+
+    /* Firebase Status */
+    .firebase-status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      z-index: 1000;
+    }
+    .firebase-connected {
+      background: #10b981;
+      color: white;
+    }
+    .firebase-disconnected {
+      background: #ef4444;
+      color: white;
+    }
     
     @media (max-width:1000px){
       .container{grid-template-columns:1fr;}
@@ -256,6 +280,9 @@
   </style>
 </head>
 <body>
+  <!-- Firebase Connection Status -->
+  <div id="firebase-status" class="firebase-status firebase-disconnected">Firebase: Disconnected</div>
+
   <header>
     <div>
       <strong>EWCMUN — Logging System</strong>
@@ -467,8 +494,38 @@
   <footer>© EWCMUN2025</footer>
 
   <script>
-    // Committee Management
+    // ==================== FIREBASE CONFIGURATION ====================
+    const firebaseConfig = {
+      apiKey: "AIzaSyAM_5HMroAMNS-CfZ4XzzRqo26wBkbFhoA",
+      authDomain: "ewcmun-setup.firebaseapp.com",
+      projectId: "ewcmun-setup",
+      storageBucket: "ewcmun-setup.firebasestorage.app",
+      messagingSenderId: "299967110413",
+      appId: "1:299967110413:web:61af02f6f10868ff342444"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Firebase connection status
+    const firebaseStatus = document.getElementById('firebase-status');
+    
+    firebase.firestore().enablePersistence()
+      .then(() => {
+        firebaseStatus.textContent = 'Firebase: Connected';
+        firebaseStatus.className = 'firebase-status firebase-connected';
+      })
+      .catch((err) => {
+        console.log('Firebase persistence failed: ', err);
+        firebaseStatus.textContent = 'Firebase: Connected (Offline Mode)';
+        firebaseStatus.className = 'firebase-status firebase-connected';
+      });
+
+    // ==================== COMMITTEE MANAGEMENT ====================
     let currentCommittee = null;
+    let unsubscribeFirestore = null;
+
     const committees = {
       'unhrc': {
         name: 'UN Human Rights Council',
@@ -533,26 +590,40 @@
       document.getElementById('committee-workspace').classList.add('active');
       document.getElementById('committee-display').textContent = committees[committeeId].name;
       
+      // Set up real-time Firestore listener
+      setupFirestoreListener();
+      
       // Load committee data
       loadCommitteeData();
       renderAll();
       renderGradingTable();
     }
 
-    // Back to committees
-    document.getElementById('back-to-committees').addEventListener('click', () => {
-      saveCommitteeData();
-      document.getElementById('committee-workspace').classList.remove('active');
-      document.getElementById('committee-selection-page').classList.add('active');
-      document.getElementById('committee-display').textContent = 'Select a Committee';
-      currentCommittee = null;
-    });
+    // Set up Firestore real-time listener
+    function setupFirestoreListener() {
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore(); // Clean up previous listener
+      }
 
-    // Save/Load committee data to localStorage
-    function saveCommitteeData() {
+      unsubscribeFirestore = db.collection('committees').doc(currentCommittee)
+        .onSnapshot((doc) => {
+          if (doc.exists) {
+            const firestoreData = doc.data();
+            Object.assign(getCurrentCommitteeData(), firestoreData);
+            renderAll();
+            renderGradingTable();
+            updateUIFromData();
+          }
+        }, (error) => {
+          console.error('Firestore listener error:', error);
+        });
+    }
+
+    // Save data to Firestore
+    function saveToFirestore() {
       if (!currentCommittee) return;
       
-      // Save grading data from current table
+      // Update grading data from current table
       const state = getCurrentCommitteeData();
       state.grades = {};
       
@@ -570,16 +641,57 @@
         state.grades[name] = grades;
       });
       
-      localStorage.setItem(`ewcmun_${currentCommittee}`, JSON.stringify(state));
+      // Save to Firestore
+      db.collection('committees').doc(currentCommittee).set(state, { merge: true })
+        .then(() => {
+          console.log('Data saved to Firestore');
+        })
+        .catch((error) => {
+          console.error('Error saving to Firestore:', error);
+        });
     }
 
+    // Load data from Firestore (initial load)
     function loadCommitteeData() {
       if (!currentCommittee) return;
-      const saved = localStorage.getItem(`ewcmun_${currentCommittee}`);
-      if (saved) {
-        Object.assign(getCurrentCommitteeData(), JSON.parse(saved));
-      }
+      
+      db.collection('committees').doc(currentCommittee).get()
+        .then((doc) => {
+          if (doc.exists) {
+            Object.assign(getCurrentCommitteeData(), doc.data());
+            updateUIFromData();
+          }
+        })
+        .catch((error) => {
+          console.error('Error loading from Firestore:', error);
+        });
     }
+
+    // Update UI from loaded data
+    function updateUIFromData() {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      // Update settings fields
+      el('chair-name').value = state.settings?.chairName || '';
+      el('conf-name').value = state.settings?.conference || '';
+    }
+
+    // Back to committees
+    document.getElementById('back-to-committees').addEventListener('click', () => {
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore();
+        unsubscribeFirestore = null;
+      }
+      
+      document.getElementById('committee-workspace').classList.remove('active');
+      document.getElementById('committee-selection-page').classList.add('active');
+      document.getElementById('committee-display').textContent = 'Select a Committee';
+      currentCommittee = null;
+    });
+
+    // ==================== REST OF YOUR EXISTING CODE ====================
+    // (All your existing functionality remains the same, but we'll replace saveCommitteeData with saveToFirestore)
 
     // Timer sound
     const timerSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
@@ -606,7 +718,7 @@
         div.style.padding='6px'; div.style.borderBottom='1px solid var(--muted)';
         div.innerHTML=`<div><strong>${r.name}</strong><div style="font-size:12px;color:var(--muted)">${r.status||'Not marked'}</div></div>`;
         const btns=document.createElement('div'); btns.style.display='flex'; btns.style.gap='6px';
-        const sel=document.createElement('button'); sel.textContent='Select'; sel.onclick=()=>{state.rollcall[i].selected=!state.rollcall[i].selected; renderRoll();}
+        const sel=document.createElement('button'); sel.textContent='Select'; sel.onclick=()=>{state.rollcall[i].selected=!state.rollcall[i].selected; renderRoll(); saveToFirestore();}
         btns.appendChild(sel);
         div.appendChild(btns);
         if(r.selected) {
@@ -633,7 +745,7 @@
       if (!state) return;
       state.speakers.splice(i,1);
       renderSpeakers();
-      saveCommitteeData();
+      saveToFirestore();
     }
 
     // Roll Call
@@ -646,7 +758,7 @@
       state.rollcall.push({name,status:'Not marked'});
       el('rc-name').value='';
       renderRoll();
-      saveCommitteeData();
+      saveToFirestore();
     }
     el('rc-mark-present').onclick=()=>{
       const state = getCurrentCommitteeData();
@@ -654,7 +766,7 @@
       
       state.rollcall.forEach(r=>{if(r.selected)r.status='Present';r.selected=false});
       renderRoll();
-      saveCommitteeData();
+      saveToFirestore();
     }
     el('rc-mark-pv').onclick=()=>{
       const state = getCurrentCommitteeData();
@@ -662,7 +774,7 @@
       
       state.rollcall.forEach(r=>{if(r.selected)r.status='Present & Voting';r.selected=false});
       renderRoll();
-      saveCommitteeData();
+      saveToFirestore();
     }
     el('rc-clear').onclick=()=>{
       if(confirm('Clear all roll call?')){
@@ -671,7 +783,7 @@
         
         state.rollcall=[];
         renderRoll();
-        saveCommitteeData();
+        saveToFirestore();
       }
     }
 
@@ -685,7 +797,7 @@
       state.speakers.push(v);
       el('sp-name').value='';
       renderSpeakers();
-      saveCommitteeData();
+      saveToFirestore();
     }
     el('sp-clear').onclick=()=>{
       if(confirm('Clear speaker list?')){
@@ -694,7 +806,7 @@
         
         state.speakers=[];
         renderSpeakers();
-        saveCommitteeData();
+        saveToFirestore();
       }
     }
     el('sp-next').onclick=()=>{
@@ -705,7 +817,7 @@
       const s=state.speakers.shift();
       renderSpeakers();
       startSpeakerTimer(s);
-      saveCommitteeData();
+      saveToFirestore();
     }
     function startSpeakerTimer(name){
       const secs=Number(el('sp-default').value)||60;
@@ -742,7 +854,7 @@
           alert('Time is up!');
         }
       },1000);
-      saveCommitteeData();
+      saveToFirestore();
     }
     function stopTimer(){
       const state = getCurrentCommitteeData();
@@ -750,7 +862,7 @@
       
       if(state.timer.interval)clearInterval(state.timer.interval);
       state.timer.interval=null;
-      saveCommitteeData();
+      saveToFirestore();
     }
     el('timer-start').onclick=()=>{
       const m=Number(el('timer-mins').value||0);
@@ -765,7 +877,7 @@
       stopTimer();
       state.timer.remaining=0;
       renderTimer();
-      saveCommitteeData();
+      saveToFirestore();
     }
 
     // Motions
@@ -785,7 +897,7 @@
         startTimer(totalSeconds);
         alert(`Timer started for ${dur} minute${dur !== 1 ? 's' : ''} and ${sp} second${sp !== 1 ? 's' : ''} ${type}`);
       }
-      saveCommitteeData();
+      saveToFirestore();
     }
     function renderMotions(){
       const state = getCurrentCommitteeData();
@@ -815,7 +927,7 @@
         const b=document.createElement('button');b.textContent=r.name;b.style.margin='4px';b.onclick=(()=>{return function(){castVote(idx)}})();cont.appendChild(b);
       });
       el('voting-log').appendChild(cont);
-      saveCommitteeData();
+      saveToFirestore();
     }
     function castVote(idx){
       const state = getCurrentCommitteeData();
@@ -825,7 +937,7 @@
       if(!choice)return;
       state.voting.votes.push({country:state.rollcall[idx].name,vote:choice.toUpperCase()});
       el('voting-log').innerHTML=`Cast ${state.voting.votes.length} votes.`;
-      saveCommitteeData();
+      saveToFirestore();
     }
     el('voting-result').onclick=()=>{
       const state = getCurrentCommitteeData();
@@ -835,7 +947,7 @@
       const tally={Y:0,N:0,A:0};
       state.voting.votes.forEach(v=>{tally[v.vote[0]]=(tally[v.vote[0]]||0)+1});
       el('voting-log').innerHTML=`Results — For: ${tally.Y||0} Against: ${tally.N||0} Abstain: ${tally.A||0}`;
-      saveCommitteeData();
+      saveToFirestore();
     }
 
     // Grading System
@@ -873,19 +985,19 @@
       tbody.appendChild(tr);
       attachListeners(tr);
       calculateRow(tr);
-      saveCommitteeData();
+      saveToFirestore();
     }
 
     function attachListeners(tr){
       tr.querySelectorAll('input[type=number]').forEach(inp=>{
         inp.addEventListener('input', ()=>{
           calculateRow(tr);
-          saveCommitteeData();
+          saveToFirestore();
         });
       });
       tr.querySelector('.remove').addEventListener('click', ()=>{ 
         tr.remove(); 
-        saveCommitteeData();
+        saveToFirestore();
       });
     }
 
@@ -968,7 +1080,7 @@
         tbody.innerHTML=''; 
         const state = getCurrentCommitteeData();
         if (state) state.grades = {};
-        saveCommitteeData();
+        saveToFirestore();
       }
     });
     
@@ -1063,14 +1175,14 @@
 
     // Save / Load
     el('save-all').onclick=()=>{
-      saveCommitteeData();
-      alert('Saved locally');
+      saveToFirestore();
+      alert('Saved to cloud');
     }
     el('load-all').onclick=()=>{
       loadCommitteeData();
       renderAll();
       renderGradingTable();
-      alert('Loaded');
+      alert('Loaded from cloud');
     }
     
     function renderAll(){
@@ -1080,10 +1192,22 @@
       renderTimer();
     }
 
-    // Auto-save
-    setInterval(()=>{
-      if(el('autosave').value==='1') saveCommitteeData();
-    },10000);
+    // Auto-save settings changes
+    el('chair-name').addEventListener('input', () => {
+      const state = getCurrentCommitteeData();
+      if (state) {
+        state.settings.chairName = el('chair-name').value;
+        saveToFirestore();
+      }
+    });
+    
+    el('conf-name').addEventListener('input', () => {
+      const state = getCurrentCommitteeData();
+      if (state) {
+        state.settings.conference = el('conf-name').value;
+        saveToFirestore();
+      }
+    });
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
