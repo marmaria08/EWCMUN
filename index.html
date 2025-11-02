@@ -176,9 +176,13 @@
       margin: 0;
       padding: 4px;
     }
-    .grading-table .delegate-name {
+    .grading-table input[type="text"] {
+      width: 120px;
+      margin: 0;
+      padding: 6px;
+    }
+    .grading-table .delegate-country {
       font-weight: 600;
-      padding: 8px 10px;
       text-align: left;
     }
     .grading-table .total {
@@ -287,9 +291,62 @@
       margin-bottom: 8px;
     }
     
+    /* Speakers History Styles */
+    .speakers-history-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .speakers-history-table th, .speakers-history-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--input-border);
+      text-align: left;
+    }
+    .speakers-history-table th {
+      background: var(--input-bg);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .speakers-history-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .speakers-history-controls button {
+      width: auto;
+      padding: 8px 12px;
+    }
+    .speakers-history-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+    .speakers-history-stat-card {
+      background: var(--card-bg);
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(16,24,40,0.05);
+    }
+    .speakers-history-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 5px;
+    }
+    .speakers-history-stat-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    
     @media (max-width:1000px){
       .container{grid-template-columns:1fr;}
       .committee-cards {grid-template-columns: 1fr;}
+      .speakers-history-stats {grid-template-columns: 1fr;}
     }
   </style>
 </head>
@@ -344,6 +401,7 @@
       <div class="nav-tabs">
         <div class="nav-tab active" data-page="main">Main Control</div>
         <div class="nav-tab" data-page="grading">Delegate Grading</div>
+        <div class="nav-tab" data-page="speakers-history">Speakers History</div>
         <button id="back-to-committees" style="margin-left:auto;width:auto;">← Back to Committees</button>
       </div>
     </div>
@@ -357,7 +415,7 @@
             <h2>Roll Call</h2>
             <label>Country name</label>
             <div style="display:flex;gap:8px">
-              <input id="rc-name" placeholder="e.g. France">
+              <input id="rc-name" placeholder="e.g. Lebanon">
               <button id="rc-add">Add</button>
             </div>
             <div class="list" id="rc-list" style="margin-top:8px"></div>
@@ -500,7 +558,58 @@
                   <th>Remove</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="grading-tbody">
+                <!-- rows added here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Speakers History Page -->
+    <div id="speakers-history-page" class="page">
+      <div class="container" style="grid-template-columns: 1fr;">
+        <div>
+          <div class="card">
+            <h2>Speakers History</h2>
+            <p style="font-size:13px;color:var(--muted);margin:0 0 15px 0">
+              Track all delegates who have spoken during the committee session, including speaking order and statistics.
+            </p>
+            
+            <div class="speakers-history-controls">
+              <button id="add-to-history">Add Current Speaker</button>
+              <button id="clear-history">Clear History</button>
+              <button id="export-speakers-csv">Export CSV</button>
+            </div>
+            
+            <div class="speakers-history-stats">
+              <div class="speakers-history-stat-card">
+                <div class="speakers-history-stat-value" id="total-speakers">0</div>
+                <div class="speakers-history-stat-label">Total Speakers</div>
+              </div>
+              <div class="speakers-history-stat-card">
+                <div class="speakers-history-stat-value" id="unique-speakers">0</div>
+                <div class="speakers-history-stat-label">Unique Speakers</div>
+              </div>
+              <div class="speakers-history-stat-card">
+                <div class="speakers-history-stat-value" id="most-frequent">-</div>
+                <div class="speakers-history-stat-label">Most Frequent Speaker</div>
+              </div>
+            </div>
+            
+            <table class="speakers-history-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Delegate/Country</th>
+                  <th>Speaking Order</th>
+                  <th>Times Spoken</th>
+                  <th>Last Spoken</th>
+                  <th>Remove</th>
+                </tr>
+              </thead>
+              <tbody id="speakers-history-list">
                 <!-- rows added here -->
               </tbody>
             </table>
@@ -557,7 +666,8 @@
           motions: [],
           voting: {active:false, votes:[]},
           grades: {},
-          settings: {chairName: '', conference: ''}
+          settings: {chairName: '', conference: ''},
+          speakersHistory: [] // NEW: Speakers history tracking
         }
       },
       'unga': {
@@ -571,7 +681,8 @@
           motions: [],
           voting: {active:false, votes:[]},
           grades: {},
-          settings: {chairName: '', conference: ''}
+          settings: {chairName: '', conference: ''},
+          speakersHistory: [] // NEW: Speakers history tracking
         }
       },
       'icc': {
@@ -585,7 +696,8 @@
           motions: [],
           voting: {active:false, votes:[]},
           grades: {},
-          settings: {chairName: '', conference: ''}
+          settings: {chairName: '', conference: ''},
+          speakersHistory: [] // NEW: Speakers history tracking
         }
       }
     };
@@ -616,6 +728,7 @@
       loadCommitteeData();
       renderAll();
       renderGradingTable();
+      renderSpeakersHistory(); // NEW: Render speakers history
     }
 
     // Set up Firestore real-time listener
@@ -630,7 +743,6 @@
             const firestoreData = doc.data();
             Object.assign(getCurrentCommitteeData(), firestoreData);
             renderAll();
-            renderGradingTable();
             updateUIFromData();
           }
         }, (error) => {
@@ -646,7 +758,7 @@
       const state = getCurrentCommitteeData();
       state.grades = {};
       
-      const tbody = document.querySelector('#sheet tbody');
+      const tbody = document.querySelector('#grading-tbody');
       tbody.querySelectorAll('tr').forEach(tr => {
         const country = tr.querySelector('.delegate-country').textContent;
         const delegateName = tr.querySelector('.delegate-name-input').value || '';
@@ -711,8 +823,147 @@
       currentCommittee = null;
     });
 
+    // ==================== SPEAKERS HISTORY FEATURE ====================
+    
+    // Render speakers history table
+    function renderSpeakersHistory() {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      const tbody = document.getElementById('speakers-history-list');
+      tbody.innerHTML = '';
+      
+      // Update statistics
+      const totalSpeakers = state.speakersHistory.length;
+      const uniqueSpeakers = [...new Set(state.speakersHistory.map(item => item.name))].length;
+      
+      // Calculate most frequent speaker
+      const frequency = {};
+      state.speakersHistory.forEach(item => {
+        frequency[item.name] = (frequency[item.name] || 0) + 1;
+      });
+      
+      let mostFrequent = '-';
+      let maxCount = 0;
+      Object.keys(frequency).forEach(name => {
+        if (frequency[name] > maxCount) {
+          maxCount = frequency[name];
+          mostFrequent = name;
+        }
+      });
+      
+      // Update statistics display
+      document.getElementById('total-speakers').textContent = totalSpeakers;
+      document.getElementById('unique-speakers').textContent = uniqueSpeakers;
+      document.getElementById('most-frequent').textContent = mostFrequent;
+      
+      // Render table rows
+      state.speakersHistory.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${item.name}</td>
+          <td>${item.order}</td>
+          <td>${frequency[item.name] || 1}</td>
+          <td>${item.timestamp || 'N/A'}</td>
+          <td><button class="remove-speaker-history" data-index="${index}">Remove</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      
+      // Attach event listeners to remove buttons
+      document.querySelectorAll('.remove-speaker-history').forEach(button => {
+        button.addEventListener('click', function() {
+          const index = parseInt(this.getAttribute('data-index'));
+          removeSpeakerFromHistory(index);
+        });
+      });
+    }
+    
+    // Add current speaker to history
+    function addCurrentSpeakerToHistory() {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      if (!state.currentSpeaker) {
+        alert('No current speaker. Use "Next Speaker" button first.');
+        return;
+      }
+      
+      const speakerName = state.currentSpeaker;
+      const timestamp = new Date().toLocaleTimeString();
+      const order = state.speakersHistory.length + 1;
+      
+      state.speakersHistory.push({
+        name: speakerName,
+        order: order,
+        timestamp: timestamp
+      });
+      
+      renderSpeakersHistory();
+      saveToFirestore();
+      
+      // Clear current speaker after adding to history
+      state.currentSpeaker = null;
+    }
+    
+    // Remove speaker from history
+    function removeSpeakerFromHistory(index) {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      state.speakersHistory.splice(index, 1);
+      renderSpeakersHistory();
+      saveToFirestore();
+    }
+    
+    // Clear all speakers history
+    function clearSpeakersHistory() {
+      if (confirm('Are you sure you want to clear all speakers history? This cannot be undone.')) {
+        const state = getCurrentCommitteeData();
+        if (!state) return;
+        
+        state.speakersHistory = [];
+        renderSpeakersHistory();
+        saveToFirestore();
+      }
+    }
+    
+    // Export speakers history to CSV
+    function exportSpeakersHistoryToCSV() {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      if (state.speakersHistory.length === 0) {
+        alert('No speakers history to export.');
+        return;
+      }
+      
+      const headers = ['Order', 'Delegate/Country', 'Timestamp'];
+      const rows = state.speakersHistory.map(item => [
+        item.order,
+        item.name,
+        item.timestamp || 'N/A'
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(field => `"${field}"`).join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentCommittee}_speakers_history.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    
     // ==================== REST OF YOUR EXISTING CODE ====================
-    // (All your existing functionality remains the same, but we'll replace saveCommitteeData with saveToFirestore)
+    // (All your existing functionality remains the same)
 
     // Timer sound
     const timerSound = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==");
@@ -866,7 +1117,41 @@
       renderSpeakers();
       startSpeakerTimer(s);
       saveToFirestore();
+      
+      // NEW: Automatically add to history and switch to Speakers History page
+      addSpeakerToHistory(s);
+      navigateToSpeakersHistory();
     }
+    
+    // NEW: Add speaker to history
+    function addSpeakerToHistory(speakerName) {
+      const state = getCurrentCommitteeData();
+      if (!state) return;
+      
+      const timestamp = new Date().toLocaleTimeString();
+      const order = state.speakersHistory.length + 1;
+      
+      state.speakersHistory.push({
+        name: speakerName,
+        order: order,
+        timestamp: timestamp
+      });
+      
+      renderSpeakersHistory();
+      saveToFirestore();
+    }
+    
+    // NEW: Navigate to Speakers History page
+    function navigateToSpeakersHistory() {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('.nav-tab[data-page="speakers-history"]').classList.add('active');
+      
+      document.querySelectorAll('#committee-workspace .page').forEach(page => {
+        page.classList.remove('active');
+      });
+      document.getElementById('speakers-history-page').classList.add('active');
+    }
+    
     function startSpeakerTimer(name){
       const secs=Number(el('sp-default').value)||60;
       startTimer(secs);
@@ -1012,16 +1297,19 @@
       saveToFirestore();
     }
 
-    // Grading System
+    // ==================== FIXED GRADING SYSTEM ====================
     const weights = { research:20, participation:25, diplomacy:20, speech:15, writing:10, leadership:10 };
-    const tbody = document.querySelector('#sheet tbody');
+    const gradingTbody = document.getElementById('grading-tbody');
     const addDelegatesBtn = document.getElementById('addDelegates');
     const clearBtn = document.getElementById('clearAll');
     const exportBtn = document.getElementById('exportCsv');
     const syncDelegatesBtn = document.getElementById('sync-delegates');
 
+    // Track if grading table has been initialized
+    let gradingTableInitialized = false;
+
     function delegateExists(country) {
-      const existingCountries = Array.from(tbody.querySelectorAll('.delegate-country')).map(td => td.textContent.trim());
+      const existingCountries = Array.from(gradingTbody.querySelectorAll('.delegate-country')).map(td => td.textContent.trim());
       return existingCountries.includes(country.trim());
     }
 
@@ -1045,7 +1333,7 @@
         <td><button class="remove">Remove</button></td>
       `;
 
-      tbody.appendChild(tr);
+      gradingTbody.appendChild(tr);
       attachListeners(tr);
       calculateRow(tr);
       saveToFirestore();
@@ -1059,8 +1347,9 @@
         });
       });
       
-      // Save delegate name when changed
-      tr.querySelector('.delegate-name-input').addEventListener('input', () => {
+      // Save delegate name when changed - FIXED: Only save on blur, not every keystroke
+      const nameInput = tr.querySelector('.delegate-name-input');
+      nameInput.addEventListener('blur', () => {
         saveToFirestore();
       });
       
@@ -1117,7 +1406,12 @@
       const state = getCurrentCommitteeData();
       if (!state) return;
       
-      tbody.innerHTML = '';
+      // Only render if not already initialized or if explicitly requested
+      if (gradingTableInitialized && gradingTbody.children.length > 0) {
+        return;
+      }
+      
+      gradingTbody.innerHTML = '';
       
       // Add delegates from grades data
       if (state.grades && Object.keys(state.grades).length > 0) {
@@ -1137,20 +1431,23 @@
             <td class="award">-</td>
             <td><button class="remove">Remove</button></td>
           `;
-          tbody.appendChild(tr);
+          gradingTbody.appendChild(tr);
           attachListeners(tr);
           calculateRow(tr);
         });
       }
+      
+      gradingTableInitialized = true;
     }
 
     addDelegatesBtn.addEventListener('click', syncRollCallToGrading);
     clearBtn.addEventListener('click', ()=>{ 
       if (confirm('Clear all grading data?')) {
-        tbody.innerHTML=''; 
+        gradingTbody.innerHTML=''; 
         const state = getCurrentCommitteeData();
         if (state) state.grades = {};
         saveToFirestore();
+        gradingTableInitialized = false;
       }
     });
     
@@ -1158,7 +1455,7 @@
 
     exportBtn.addEventListener('click', ()=>{
       const rows = [];
-      tbody.querySelectorAll('tr').forEach(r=>{
+      gradingTbody.querySelectorAll('tr').forEach(r=>{
         const country = r.querySelector('.delegate-country').textContent;
         const delegateName = r.querySelector('.delegate-name-input').value;
         const data = { country, delegateName };
@@ -1207,6 +1504,11 @@
             page.classList.remove('active');
           });
           document.getElementById(`${pageId}-page`).classList.add('active');
+          
+          // Render grading table only when navigating to grading page
+          if (pageId === 'grading') {
+            renderGradingTable();
+          }
         });
       });
     }
@@ -1220,6 +1522,7 @@
         page.classList.remove('active');
       });
       document.getElementById('grading-page').classList.add('active');
+      renderGradingTable();
     });
 
     // Dark Mode Toggle
@@ -1252,7 +1555,7 @@
     el('load-all').onclick=()=>{
       loadCommitteeData();
       renderAll();
-      renderGradingTable();
+      renderSpeakersHistory(); // NEW: Render speakers history
       alert('Loaded from cloud');
     }
     
@@ -1283,6 +1586,11 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       setupNavigation();
+      
+      // NEW: Set up speakers history event listeners
+      document.getElementById('add-to-history').addEventListener('click', addCurrentSpeakerToHistory);
+      document.getElementById('clear-history').addEventListener('click', clearSpeakersHistory);
+      document.getElementById('export-speakers-csv').addEventListener('click', exportSpeakersHistoryToCSV);
     });
   </script>
 </body>
