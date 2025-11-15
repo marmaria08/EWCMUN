@@ -10,6 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   
   <style>
+    /* ALL YOUR EXISTING CSS STAYS EXACTLY THE SAME */
     :root{
       --card-bg:#ffffff;
       --muted:#666;
@@ -667,7 +668,7 @@
           voting: {active:false, votes:[]},
           grades: {},
           settings: {chairName: '', conference: ''},
-          speakersHistory: [] // NEW: Speakers history tracking
+          speakersHistory: []
         }
       },
       'unga': {
@@ -682,7 +683,7 @@
           voting: {active:false, votes:[]},
           grades: {},
           settings: {chairName: '', conference: ''},
-          speakersHistory: [] // NEW: Speakers history tracking
+          speakersHistory: []
         }
       },
       'icc': {
@@ -697,7 +698,7 @@
           voting: {active:false, votes:[]},
           grades: {},
           settings: {chairName: '', conference: ''},
-          speakersHistory: [] // NEW: Speakers history tracking
+          speakersHistory: []
         }
       }
     };
@@ -728,7 +729,7 @@
       loadCommitteeData();
       renderAll();
       renderGradingTable();
-      renderSpeakersHistory(); // NEW: Render speakers history
+      renderSpeakersHistory();
     }
 
     // Set up Firestore real-time listener
@@ -1305,9 +1306,6 @@
     const exportBtn = document.getElementById('exportCsv');
     const syncDelegatesBtn = document.getElementById('sync-delegates');
 
-    // Track if grading table has been initialized
-    let gradingTableInitialized = false;
-
     function delegateExists(country) {
       const existingCountries = Array.from(gradingTbody.querySelectorAll('.delegate-country')).map(td => td.textContent.trim());
       return existingCountries.includes(country.trim());
@@ -1388,17 +1386,19 @@
       
       let addedCount = 0;
       
+      // Clear existing grading table
+      gradingTbody.innerHTML = '';
+      
+      // Add ALL delegates from roll call in the exact same order
       state.rollcall.forEach(delegate => {
-        if (!delegateExists(delegate.name)) {
-          newRow(delegate.name);
-          addedCount++;
-        }
+        newRow(delegate.name);
+        addedCount++;
       });
       
       if (addedCount > 0) {
         alert(`Added ${addedCount} delegate${addedCount !== 1 ? 's' : ''} from roll call to grading sheet`);
       } else {
-        alert('All roll call delegates are already in the grading sheet');
+        alert('No delegates in roll call to add');
       }
     }
 
@@ -1406,17 +1406,13 @@
       const state = getCurrentCommitteeData();
       if (!state) return;
       
-      // Only render if not already initialized or if explicitly requested
-      if (gradingTableInitialized && gradingTbody.children.length > 0) {
-        return;
-      }
-      
       gradingTbody.innerHTML = '';
       
-      // Add delegates from grades data
-      if (state.grades && Object.keys(state.grades).length > 0) {
-        Object.keys(state.grades).forEach(country => {
-          const gradeData = state.grades[country];
+      // Render delegates in the EXACT SAME ORDER as roll call
+      if (state.rollcall && state.rollcall.length > 0) {
+        state.rollcall.forEach(delegate => {
+          const country = delegate.name;
+          const gradeData = state.grades[country] || {};
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td class="delegate-country">${country}</td>
@@ -1436,8 +1432,6 @@
           calculateRow(tr);
         });
       }
-      
-      gradingTableInitialized = true;
     }
 
     addDelegatesBtn.addEventListener('click', syncRollCallToGrading);
@@ -1447,7 +1441,6 @@
         const state = getCurrentCommitteeData();
         if (state) state.grades = {};
         saveToFirestore();
-        gradingTableInitialized = false;
       }
     });
     
@@ -1555,7 +1548,7 @@
     el('load-all').onclick=()=>{
       loadCommitteeData();
       renderAll();
-      renderSpeakersHistory(); // NEW: Render speakers history
+      renderSpeakersHistory();
       alert('Loaded from cloud');
     }
     
@@ -1587,7 +1580,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       setupNavigation();
       
-      // NEW: Set up speakers history event listeners
+      // Set up speakers history event listeners
       document.getElementById('add-to-history').addEventListener('click', addCurrentSpeakerToHistory);
       document.getElementById('clear-history').addEventListener('click', clearSpeakersHistory);
       document.getElementById('export-speakers-csv').addEventListener('click', exportSpeakersHistoryToCSV);
