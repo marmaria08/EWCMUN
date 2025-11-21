@@ -1417,12 +1417,12 @@
           tr.innerHTML = `
             <td class="delegate-country">${country}</td>
             <td><input type="text" class="delegate-name-input" value="${gradeData.delegateName || ''}" placeholder="Delegate name" /></td>
-            <td><input type="number" min="1" max="5" value="${gradeData.research || 3}" data-key="research" /></td>
-            <td><input type="number" min="1" max="5" value="${gradeData.participation || 3}" data-key="participation" /></td>
-            <td><input type="number" min="1" max="5" value="${gradeData.diplomacy || 3}" data-key="diplomacy" /></td>
-            <td><input type="number" min="1" max="5" value="${gradeData.speech || 3}" data-key="speech" /></td>
-            <td><input type="number" min="1" max="5" value="${gradeData.writing || 3}" data-key="writing" /></td>
-            <td><input type="number" min="1" max="5" value="${gradeData.leadership || 3}" data-key="leadership" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.research || 0}" data-key="research" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.participation || 0}" data-key="participation" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.diplomacy || 0}" data-key="diplomacy" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.speech || 0}" data-key="speech" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.writing || 0}" data-key="writing" /></td>
+            <td><input type="number" min="1" max="5" value="${gradeData.leadership || 0}" data-key="leadership" /></td>
             <td class="total">0</td>
             <td class="award">-</td>
             <td><button class="remove">Remove</button></td>
@@ -1588,4 +1588,5 @@
   </script>
 </body>
 </html>
+
 
