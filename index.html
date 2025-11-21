@@ -1320,12 +1320,12 @@
       tr.innerHTML = `
         <td class="delegate-country">${country || 'New Country'}</td>
         <td><input type="text" class="delegate-name-input" value="${delegateName || ''}" placeholder="Delegate name" /></td>
-        <td><input type="number" min="1" max="5" value="3" data-key="research" /></td>
-        <td><input type="number" min="1" max="5" value="3" data-key="participation" /></td>
-        <td><input type="number" min="1" max="5" value="3" data-key="diplomacy" /></td>
-        <td><input type="number" min="1" max="5" value="3" data-key="speech" /></td>
-        <td><input type="number" min="1" max="5" value="3" data-key="writing" /></td>
-        <td><input type="number" min="1" max="5" value="3" data-key="leadership" /></td>
+        <td><input type="number" min="1" max="10" value="0" data-key="research" /></td>
+        <td><input type="number" min="1" max="10" value="0" data-key="participation" /></td>
+        <td><input type="number" min="1" max="10" value="0" data-key="diplomacy" /></td>
+        <td><input type="number" min="1" max="10" value="0" data-key="speech" /></td>
+        <td><input type="number" min="1" max="10" value="0" data-key="writing" /></td>
+        <td><input type="number" min="1" max="10" value="0" data-key="leadership" /></td>
         <td class="total">0</td>
         <td class="award">-</td>
         <td><button class="remove">Remove</button></td>
@@ -1588,3 +1588,4 @@
   </script>
 </body>
 </html>
+
